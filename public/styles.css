@@ -4,6 +4,8 @@
   --fs-s: 12px;
   --fs-m: 14px;
   --fs-l: 18px;
+  color-scheme: light dark; /* scrollbars and menus of the browser follow the theme */
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235f5e5a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --tint-strength: 18%; /* how strongly the colour of a project tints its cards and changelog entries */
 
   --bg: #f7f6f2;
@@ -27,6 +29,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b4b2a9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     --bg: #1b1b19;
     --surface: #242422;
     --sunken: #2c2c29;
@@ -100,6 +103,15 @@ button:hover,
 select:hover,
 .card:hover {
   border-color: var(--line2);
+}
+
+select {
+  padding-right: 38px;
+  appearance: none;
+  background-image: var(--chevron);
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px;
 }
 
 :is(button, select, a, .card):focus-visible {
@@ -237,13 +249,13 @@ select:hover,
 #signin,
 .avatar {
   height: 34px;
-  background: var(--surface);
+  background-color: var(--surface);
   border: 1px solid var(--line2);
   border-radius: 999px;
 }
 
 .bar select {
-  padding: 0 16px;
+  padding: 0 38px 0 16px;
 }
 
 #signin {
@@ -796,9 +808,13 @@ button.swatch:hover {
   padding: 6px 10px;
   font: inherit;
   color: var(--text);
-  background: var(--bg);
+  background-color: var(--bg);
   border: 1px solid var(--line);
   border-radius: 8px;
+}
+
+.edit select {
+  padding-right: 38px;
 }
 
 .edit textarea {
