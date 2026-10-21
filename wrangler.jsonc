@@ -13,7 +13,7 @@
     { "binding": "TICKETS", "bucket_name": "logbook-tickets" }
   ],
   "triggers": {
-    "crons": ["0 3 * * *"]
+    "crons": ["0 3 * * *", "0 * * * *"]
   },
   "vars": {
     "PUBLIC_READ": "1",

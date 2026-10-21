@@ -2,6 +2,7 @@ import { HttpError } from './tickets.js';
 
 const KEY = 'tickets.json';
 const PROJECTS_KEY = 'projects.json';
+const SYNC_KEY = 'commit-sync.json';
 const BACKUP_PREFIX = 'backups/';
 const BACKUPS_KEPT = 30;
 
@@ -41,6 +42,16 @@ export async function readProjects(env) {
   const object = await env.TICKETS.get(PROJECTS_KEY);
   if (!object) throw new HttpError(500, `The storage has no ${PROJECTS_KEY}.`);
   return object.json();
+}
+
+// What the last commit collection did, per repository. Not part of the backups: it can be rebuilt.
+export async function readSyncState(env) {
+  const object = await env.TICKETS.get(SYNC_KEY);
+  return object ? object.json() : {};
+}
+
+export async function writeSyncState(env, state) {
+  await env.TICKETS.put(SYNC_KEY, JSON.stringify(state), { httpMetadata: { contentType: 'application/json' } });
 }
 
 async function copyObject(env, key, backupKey) {

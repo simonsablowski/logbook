@@ -1,6 +1,9 @@
 import { authenticate } from './auth.js';
-import { backup, mutate, readProjects, readTickets } from './store.js';
+import { syncCommits } from './commits.js';
+import { backup, mutate, readProjects, readSyncState, readTickets } from './store.js';
 import { HttpError, createTicket, patchTicket } from './tickets.js';
+
+const BACKUP_CRON = '0 3 * * *';
 
 const readPrefixes = async (env) => (await readProjects(env)).map((p) => p.prefix);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -41,6 +44,10 @@ async function handleApi(request, env, url, auth) {
     const next = url.searchParams.get('next') || '';
     return Response.redirect(new URL(`/${next.startsWith('#') ? next : ''}`, url).href, 302);
   }
+
+  // The commit collection runs every hour; this shows its last result or runs it right away.
+  if (pathname === '/api/tickets/sync' && method === 'GET') return reply(await readSyncState(env));
+  if (pathname === '/api/tickets/sync' && method === 'POST') return reply(await syncCommits(env));
 
   if (pathname === '/api/tickets' && method === 'POST') {
     const input = await readJson(request);
@@ -90,7 +97,8 @@ export default {
     }
   },
 
+  // Two schedules in wrangler.jsonc: the nightly backup and the hourly commit collection.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(backup(env));
+    ctx.waitUntil(event.cron === BACKUP_CRON ? backup(env) : syncCommits(env));
   },
 };
