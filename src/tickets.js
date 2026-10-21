@@ -8,7 +8,7 @@ export class HttpError extends Error {
 }
 
 // Fields a client may set. Everything else (id, project, created, origin) is fixed by the server.
-const EDITABLE = ['title', 'type', 'status', 'priority', 'effort', 'body', 'completed', 'verified', 'commits'];
+const EDITABLE = ['title', 'type', 'status', 'priority', 'effort', 'body', 'completed', 'completedAt', 'verified', 'commits'];
 
 export function nextId(tickets, project) {
   const numbers = tickets
@@ -38,7 +38,13 @@ function check(ticket, prefixes) {
   return ticket;
 }
 
-export function createTicket(input, tickets, prefixes, today) {
+// `now` is the current time as an ISO string. A date alone (YYYY-MM-DD) is accepted too, and then a
+// completed ticket gets no time.
+const dayOf = (now) => now.slice(0, 10);
+const timeOf = (now) => (now.length > 10 ? now : null);
+
+export function createTicket(input, tickets, prefixes, now) {
+  const today = dayOf(now);
   if (!prefixes.includes(input.project)) throw new HttpError(400, `unknown project ${input.project}`);
   const ticket = {
     id: nextId(tickets, input.project),
@@ -46,6 +52,7 @@ export function createTicket(input, tickets, prefixes, today) {
     status: 'idea',
     effort: null,
     completed: null,
+    completedAt: null,
     body: '',
     commits: [],
     ...Object.fromEntries(EDITABLE.filter((k) => k in input).map((k) => [k, input[k]])),
@@ -53,13 +60,24 @@ export function createTicket(input, tickets, prefixes, today) {
     origin: 'live',
     verified: true,
   };
-  if (ticket.status === 'completed' && !ticket.completed) ticket.completed = today;
+  if (ticket.status === 'completed' && !ticket.completed) {
+    ticket.completed = today;
+    ticket.completedAt = timeOf(now);
+  }
   return check(ticket, prefixes);
 }
 
-export function patchTicket(ticket, patch, prefixes, today) {
+export function patchTicket(ticket, patch, prefixes, now) {
   const next = { ...ticket, ...Object.fromEntries(EDITABLE.filter((k) => k in patch).map((k) => [k, patch[k]])) };
-  if (next.status === 'completed' && !next.completed) next.completed = today;
-  if (next.status !== 'completed' && ticket.status === 'completed' && !('completed' in patch)) next.completed = null;
+  if (next.status === 'completed' && !next.completed) {
+    next.completed = dayOf(now);
+    next.completedAt = timeOf(now);
+  }
+  if (next.status !== 'completed' && ticket.status === 'completed' && !('completed' in patch)) {
+    next.completed = null;
+    next.completedAt = null;
+  }
+  // a date set by hand has no time, unless the time is sent along
+  if ('completed' in patch && !('completedAt' in patch)) next.completedAt = null;
   return check(next, prefixes);
 }

@@ -7,7 +7,7 @@ import { HttpError, createTicket, patchTicket } from './tickets.js';
 const BACKUP_CRON = '0 3 * * *';
 
 const readPrefixes = async (env) => (await readProjects(env)).map((p) => p.prefix);
-const today = () => new Date().toISOString().slice(0, 10);
+const now = () => new Date().toISOString();
 
 const reply = (body, status = 200) =>
   new Response(body === null ? null : JSON.stringify(body), {
@@ -82,7 +82,7 @@ async function handleApi(request, env, url, auth) {
     const input = await readJson(request);
     const prefixes = await readPrefixes(env);
     return reply(await mutate(env, (tickets) => {
-      const ticket = createTicket(input, tickets, prefixes, today());
+      const ticket = createTicket(input, tickets, prefixes, now());
       return { tickets: [...tickets, ticket], result: ticket };
     }), 201);
   }
@@ -93,7 +93,7 @@ async function handleApi(request, env, url, auth) {
     return reply(await mutate(env, (tickets) => {
       const index = tickets.findIndex((t) => t.id === ticketId);
       if (index < 0) throw new HttpError(404, `No ticket ${ticketId}`);
-      const ticket = patchTicket(tickets[index], patch, prefixes, today());
+      const ticket = patchTicket(tickets[index], patch, prefixes, now());
       return { tickets: tickets.with(index, ticket), result: ticket };
     }));
   }

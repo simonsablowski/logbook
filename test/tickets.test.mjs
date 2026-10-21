@@ -57,3 +57,28 @@ test('validateTicket reports every problem', () => {
   const errors = validateTicket({ id: 'x', project: 'MTV', title: '', type: 'nope', status: 'nope', commits: 'x', body: 1 }, prefixes);
   assert.ok(errors.length >= 6);
 });
+
+test('a completed ticket gets the time of its completion', () => {
+  const ticket = createTicket({ ...planned, status: 'completed' }, existing, prefixes, '2026-10-21T08:57:55.123Z');
+  assert.equal(ticket.completed, '2026-10-21');
+  assert.equal(ticket.completedAt, '2026-10-21T08:57:55.123Z');
+});
+
+test('completing and reopening a ticket sets and clears the time', () => {
+  const open = createTicket(planned, existing, prefixes, '2026-10-21T08:00:00.000Z');
+  assert.equal(open.completedAt, null);
+  const done = patchTicket(open, { status: 'completed' }, prefixes, '2026-10-22T09:30:00.000Z');
+  assert.equal(done.completed, '2026-10-22');
+  assert.equal(done.completedAt, '2026-10-22T09:30:00.000Z');
+  const reopened = patchTicket(done, { status: 'in-progress', priority: 'now' }, prefixes, '2026-10-23T10:00:00.000Z');
+  assert.equal(reopened.completed, null);
+  assert.equal(reopened.completedAt, null);
+});
+
+test('a completion date set by hand has no time, unless the time is sent along', () => {
+  const done = createTicket({ ...planned, status: 'completed' }, existing, prefixes, '2026-10-21T08:57:55.123Z');
+  assert.equal(patchTicket(done, { completed: '2026-10-01' }, prefixes, '2026-10-22T00:00:00.000Z').completedAt, null);
+  const both = patchTicket(done, { completed: '2026-10-01', completedAt: '2026-10-01T12:00:00Z' }, prefixes, '2026-10-22T00:00:00.000Z');
+  assert.equal(both.completedAt, '2026-10-01T12:00:00Z');
+  assert.throws(() => patchTicket(done, { completedAt: 'yesterday' }, prefixes, '2026-10-22'), /completedAt must be a time/);
+});

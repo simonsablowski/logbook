@@ -56,7 +56,9 @@ const formatDate = (date) => {
 };
 
 const byPriority = (a, b) => (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3) || a.id.localeCompare(b.id);
-const byCompletion = (a, b) => b.completed.localeCompare(a.completed) || b.id.localeCompare(a.id);
+// Newest first by the time of completion; tickets that only know their day come after the timed ones of that day.
+const completionKey = (ticket) => ticket.completedAt || `${ticket.completed}T00:00:00.000Z`;
+const byCompletion = (a, b) => completionKey(b).localeCompare(completionKey(a)) || b.id.localeCompare(a.id);
 
 const summaryOf = (ticket) => (ticket.body.split('## Summary')[1] || '').split('##')[0].trim();
 

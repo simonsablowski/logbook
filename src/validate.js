@@ -24,6 +24,9 @@ export function validateTicket(ticket, prefixes) {
   if (ticket.status === 'completed' && !DATE.test(ticket.completed || '')) {
     errors.push('completed tickets need a completed date (YYYY-MM-DD)');
   }
+  if (ticket.completedAt != null && !/^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(ticket.completedAt)) {
+    errors.push('completedAt must be a time such as 2026-10-21T08:57:55Z');
+  }
   if (ticket.origin != null && !ORIGINS.includes(ticket.origin)) errors.push(`origin must be one of ${ORIGINS.join(', ')}`);
   if (typeof ticket.body !== 'string') errors.push('body must be a string');
   if (!Array.isArray(ticket.commits) || ticket.commits.some((c) => !c || typeof c.sha !== 'string' || typeof c.subject !== 'string')) {
