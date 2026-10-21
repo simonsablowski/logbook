@@ -1,4 +1,6 @@
-node_modules/
 .DS_Store
-.clones/
 .backup/
+.clones/
+.dev.vars
+.wrangler/
+node_modules/
