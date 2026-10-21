@@ -36,6 +36,7 @@ const ICONS = {
   type: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1"/>',
   effort: '<path d="M5 20v-6M12 20V9M19 20V4"/>',
   date: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
 };
 
 // Helpers ------------------------------------------------------------
@@ -331,12 +332,13 @@ function renderColumn([status, label], visible) {
     ? `<span class="limit" title="WIP limit ${limit}, counted across all projects">${total} / ${limit}</span>`
     : `<span>${items.length}</span>`;
   const overflowView = status === 'completed' ? 'changelog' : 'backlog';
-  // New tickets start as ideas, so the button to create one sits in the Idea column.
-  const add = status === 'idea' && user ? '<button class="add" type="button" title="New ticket" aria-label="New ticket">+</button>' : '';
+  // New tickets start as ideas, so a placeholder card to create one sits at the top of the Idea column.
+  const add = status === 'idea' && user ? `<button class="add-card" type="button">${icon('plus')}New ticket</button>` : '';
+  const cards = items.map(card).join('') || (add ? '' : '<div class="note">Empty</div>');
   return `
   <section class="column${limitClass}" data-status="${status}">
-    <h2 class="heading"><span>${label}</span><span class="col-end">${add}${count}</span></h2>
-    <div class="cards">${items.map(card).join('') || '<div class="note">Empty</div>'}</div>
+    <h2 class="heading"><span>${label}</span>${count}</h2>
+    <div class="cards">${add}${cards}</div>
     <div class="note more" data-view-name="${overflowView}" hidden></div>
   </section>`;
 }
@@ -595,7 +597,7 @@ $('signin').onclick = () => {
   rememberEditor(true);
   location.href = `api/tickets/login?next=${encodeURIComponent(location.hash)}`;
 };
-$('view').addEventListener('click', (event) => event.target.closest('.add') && startCreating());
+$('view').addEventListener('click', (event) => event.target.closest('.add-card') && startCreating());
 $('avatar').onclick = toggleAccountMenu;
 $('signout').onclick = () => {
   rememberEditor(false);

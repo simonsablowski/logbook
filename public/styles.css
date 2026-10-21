@@ -183,7 +183,8 @@ select:hover,
   text-decoration: underline;
 }
 
-/* Tabs -------------------------------------------------------------- */
+/* Header ------------------------------------------------------------ */
+/* Tabs, filter and account share one look: filled with the sunken colour, 34 px high, rounded. */
 
 .bar {
   display: flex;
@@ -192,20 +193,66 @@ select:hover,
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--line);
 }
 
 .bar-start,
 .bar-end {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 20px;
+  gap: 8px 12px;
   align-items: center;
 }
 
-.bar-start select,
-.bar-end {
-  margin-bottom: 6px;
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--sunken);
+  border-radius: 10px;
+}
+
+.tab {
+  height: 28px;
+  padding: 0 14px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text2);
+}
+
+.tab:hover {
+  border-color: transparent;
+  color: var(--text);
+}
+
+.tab[aria-selected="true"] {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.bar select,
+#signin,
+.avatar {
+  height: 34px;
+  background: var(--sunken);
+  border: 1px solid transparent;
+  border-radius: 10px;
+}
+
+.bar select {
+  padding: 0 12px;
+}
+
+#signin {
+  padding: 0 14px;
+}
+
+.bar select:hover,
+#signin:hover,
+.avatar:hover {
+  border-color: var(--line2);
 }
 
 .account {
@@ -213,11 +260,9 @@ select:hover,
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 34px;
   padding: 0;
   border-radius: 50%;
-  background: var(--sunken);
   font-size: var(--fs-s);
   font-weight: 600;
 }
@@ -253,49 +298,10 @@ select:hover,
   background: var(--sunken);
 }
 
-.col-end {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.add {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border-radius: 6px;
-  line-height: 1;
-}
-
 .primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--bg);
-}
-
-.tabs {
-  display: flex;
-  gap: 20px;
-}
-
-.tab {
-  margin-bottom: -1px;
-  padding: 8px 2px;
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  color: var(--text2);
-}
-
-.tab:hover {
-  color: var(--text);
-}
-
-.tab[aria-selected="true"] {
-  border-bottom-color: var(--accent);
-  color: var(--text);
-  font-weight: 600;
 }
 
 /* Board ------------------------------------------------------------- */
@@ -368,6 +374,31 @@ select:hover,
 
 .card.selected {
   border-color: var(--accent);
+}
+
+/* Placeholder card at the top of the Idea column that creates a ticket. */
+.add-card {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 104px;
+  margin-bottom: 8px;
+  color: var(--text2);
+  background: transparent;
+  border: 2px dashed var(--line2);
+  border-radius: 8px;
+}
+
+.add-card:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.add-card .icon {
+  width: 18px;
+  height: 18px;
 }
 
 .card.dragging {
