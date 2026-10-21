@@ -113,7 +113,7 @@ const effortFact = (ticket) =>
 const card = (ticket) => `
   <button class="card${ticket.id === state.ticket ? ' selected' : ''}" data-id="${ticket.id}">
     <div class="id">${ticket.id}</div>
-    <div class="card-title">${esc(ticket.title)}</div>
+    <div class="card-title" title="${esc(ticket.title)}">${esc(ticket.title)}</div>
     <div class="meta">${ticket.completed ? fact('date', 'Completed', formatDate(ticket.completed)) : priorityFact(ticket.priority)}<span class="spacer"></span>${effortFact(ticket)}</div>
   </button>`;
 
