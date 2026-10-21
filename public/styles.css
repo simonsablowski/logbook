@@ -203,7 +203,6 @@ select:hover,
 }
 
 .who {
-  font-size: var(--fs-s);
   color: var(--text2);
 }
 
