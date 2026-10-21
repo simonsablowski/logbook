@@ -45,7 +45,11 @@ async function fetchCommits(repo, since, token) {
   for (let page = 0; url && page < PAGES_MAX; page++) {
     const response = await fetch(url, { headers });
     if (response.status === 409) return commits; // empty repository
-    if (!response.ok) throw new Error(`GitHub answered ${response.status} for ${repo}`);
+    if (!response.ok) {
+      const detail = (await response.text()).replace(/\s+/g, ' ').slice(0, 160);
+      const limited = response.headers.get('x-ratelimit-remaining') === '0' ? ' (rate limit used up)' : '';
+      throw new Error(`GitHub answered ${response.status} for ${repo}${limited}: ${detail}`);
+    }
     commits.push(...(await response.json()));
     url = response.headers.get('link')?.match(/<([^>]+)>;\s*rel="next"/)?.[1] ?? null;
   }
