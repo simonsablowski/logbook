@@ -19,8 +19,12 @@ async function signingKeys(teamDomain, refresh) {
 
 const refuse = (status, message) => ({ error: { status, message } });
 
-// With PUBLIC_READ=1 everybody may view the Logbook. Only reading is public; every other method still needs Access.
-export const isPublicRead = (request, env) => env.PUBLIC_READ === '1' && ['GET', 'HEAD'].includes(request.method);
+// With PUBLIC_READ=1 everybody may view the Logbook. Only reading is public: every other method and
+// everything under /api/tickets (the part Access protects) still needs a valid Access token.
+export const isPublicRead = (request, env) =>
+  env.PUBLIC_READ === '1' &&
+  ['GET', 'HEAD'].includes(request.method) &&
+  !new URL(request.url).pathname.startsWith('/api/tickets');
 
 export async function authenticate(request, env) {
   if (env.ACCESS_BYPASS === '1') return { user: 'local development' };

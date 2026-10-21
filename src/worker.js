@@ -33,6 +33,15 @@ async function handleApi(request, env, url, auth) {
     return reply({ projects, tickets, generated: new Date().toISOString(), user: auth.user });
   }
 
+  // The viewer asks who is signed in to decide whether to offer editing.
+  if (pathname === '/api/tickets/session' && method === 'GET') return reply({ user: auth.user });
+
+  // Opening this address makes Access ask for a sign-in, then returns to the viewer.
+  if (pathname === '/api/tickets/login' && method === 'GET') {
+    const next = url.searchParams.get('next') || '';
+    return Response.redirect(new URL(`/${next.startsWith('#') ? next : ''}`, url).href, 302);
+  }
+
   if (pathname === '/api/tickets' && method === 'POST') {
     const input = await readJson(request);
     return reply(await mutate(env, (tickets) => {

@@ -17,13 +17,18 @@
         <button class="tab" role="tab" id="tab-backlog" data-view="backlog" aria-controls="view">Backlog</button>
         <button class="tab" role="tab" id="tab-changelog" data-view="changelog" aria-controls="view">Changelog</button>
       </div>
-      <label for="project" class="sr">Project</label>
-      <select id="project"></select>
+      <div class="bar-end">
+        <span id="who" class="who" hidden></span>
+        <button id="signin" type="button" hidden>Sign in to edit</button>
+        <label for="project" class="sr">Project</label>
+        <select id="project"></select>
+      </div>
     </div>
 
     <main id="view" role="tabpanel"></main>
     <div id="backdrop"></div>
     <aside id="detail" aria-label="Ticket details"></aside>
+    <div id="toast" role="status" hidden></div>
   </div>
 
   <script type="module" src="app.js"></script>

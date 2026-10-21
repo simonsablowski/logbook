@@ -25,6 +25,7 @@ const WIP_LIMITS = { planned: 6, 'in-progress': 2 };
 const PRIORITY_LABEL = { now: 'Now', next: 'Next', later: 'Later' };
 const PRIORITY_RANK = { now: 0, next: 1, later: 2 };
 const EFFORT_LABEL = { S: 'Small', M: 'Medium', L: 'Large' };
+const TYPES = ['feature', 'change', 'content', 'bug', 'chore', 'docs', 'idea'];
 const EMPTY_TEXT = /^(not documented\.?|n\/a|tbd|-)?$/i;
 
 const ICONS = {
@@ -73,7 +74,7 @@ function renderBody(body) {
 
 // View state, kept in the URL hash (#v=changelog&p=MTV&t=MTV-023) ------
 
-const state = { view: 'board', project: '', ticket: '' };
+const state = { view: 'board', project: '', ticket: '', editing: false };
 
 function readHash() {
   const params = new URLSearchParams(location.hash.slice(1));
@@ -88,6 +89,84 @@ function writeHash() {
   if (state.project) params.set('p', state.project);
   if (state.ticket) params.set('t', state.ticket);
   history.replaceState(null, '', `#${params}`);
+}
+
+// Session and saving -------------------------------------------------
+// Viewing is public. Changing tickets needs a sign-in through Cloudflare Access, which only
+// protects the /api/tickets paths; the session check below tells whether this browser has one.
+
+let user = ''; // signed-in editor, empty when only viewing
+
+const rememberEditor = (on) => {
+  try {
+    if (on) localStorage.setItem('logbook-editor', '1');
+    else localStorage.removeItem('logbook-editor');
+  } catch {}
+};
+
+// Visitors who never signed in are not sent to Access at all.
+async function checkSession() {
+  let remembered = false;
+  try {
+    remembered = localStorage.getItem('logbook-editor') === '1';
+  } catch {}
+  if (!remembered) return;
+  try {
+    const response = await fetch('api/tickets/session', { redirect: 'manual' });
+    user = response.ok ? (await response.json()).user : '';
+  } catch {
+    user = '';
+  }
+  if (!user) rememberEditor(false);
+}
+
+function updateSessionBar() {
+  $('who').hidden = !user;
+  $('who').textContent = user;
+  $('signin').hidden = Boolean(user);
+}
+
+function toast(message) {
+  const el = $('toast');
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { el.hidden = true; }, 5000);
+}
+
+// Sends a change to the API and applies the stored result. Returns an error message, or '' on success.
+async function saveTicket(id, patch) {
+  let response;
+  try {
+    response = await fetch(`api/tickets/${id}`, {
+      method: 'PATCH',
+      redirect: 'manual',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+  } catch {
+    return 'Could not reach the server.';
+  }
+  if (response.type === 'opaqueredirect' || response.status === 401) {
+    user = '';
+    rememberEditor(false);
+    updateSessionBar();
+    return 'Your session has expired. Sign in again to save.';
+  }
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) return result.error || `Saving failed (${response.status})`;
+  Object.assign(tickets.find((t) => t.id === id), result);
+  return '';
+}
+
+async function moveTicket(id, status) {
+  const ticket = tickets.find((t) => t.id === id);
+  if (!ticket || ticket.status === status) return;
+  const patch = { status };
+  if (status !== 'completed' && !ticket.priority) patch.priority = 'later';
+  const error = await saveTicket(id, patch);
+  if (error) toast(error);
+  render();
 }
 
 // Templates ----------------------------------------------------------
@@ -111,11 +190,30 @@ const effortFact = (ticket) =>
     : '';
 
 const card = (ticket) => `
-  <button class="card${ticket.id === state.ticket ? ' selected' : ''}" data-id="${ticket.id}">
+  <div class="card${ticket.id === state.ticket ? ' selected' : ''}" data-id="${ticket.id}" role="button" tabindex="0"${user ? ' draggable="true"' : ''}>
     <div class="id">${ticket.id}</div>
     <div class="card-title" title="${esc(ticket.title)}">${esc(ticket.title)}</div>
     <div class="meta">${ticket.completed ? fact('date', 'Completed', formatDate(ticket.completed)) : priorityFact(ticket.priority)}<span class="spacer"></span>${effortFact(ticket)}</div>
-  </button>`;
+  </div>`;
+
+const options = (items, selected, none) =>
+  (none ? [`<option value=""${selected ? '' : ' selected'}>${none}</option>`] : [])
+    .concat(items.map(([value, label]) => `<option value="${value}"${value === selected ? ' selected' : ''}>${esc(label)}</option>`))
+    .join('');
+
+const editForm = (ticket) => `
+  <form id="edit-form" class="edit" novalidate>
+    <label>Title<input name="title" value="${esc(ticket.title)}"></label>
+    <div class="edit-row">
+      <label>Status<select name="status">${options(COLUMNS, ticket.status)}</select></label>
+      <label>Priority<select name="priority">${options(Object.entries(PRIORITY_LABEL), ticket.priority, 'None')}</select></label>
+      <label>Effort<select name="effort">${options(Object.entries(EFFORT_LABEL), ticket.effort, 'None')}</select></label>
+      <label>Type<select name="type">${options(TYPES.map((t) => [t, capitalize(t)]), ticket.type)}</select></label>
+    </div>
+    <label>Text (Markdown, sections start with ##)<textarea name="body" rows="14">${esc(ticket.body)}</textarea></label>
+    <p id="edit-error" class="edit-error" role="alert" hidden></p>
+    <div class="edit-actions"><button type="submit" class="primary">Save</button><button type="button" id="cancel-edit">Cancel</button></div>
+  </form>`;
 
 const backlogRow = (ticket) => `
   <button class="row" data-id="${ticket.id}">
@@ -149,7 +247,7 @@ function renderColumn([status, label], visible) {
     : `<span>${items.length}</span>`;
   const overflowView = status === 'completed' ? 'changelog' : 'backlog';
   return `
-  <section class="column${limitClass}">
+  <section class="column${limitClass}" data-status="${status}">
     <h2 class="heading"><span>${label}</span>${count}</h2>
     <div class="cards">${items.map(card).join('') || '<div class="note">Empty</div>'}</div>
     <div class="note more" data-view-name="${overflowView}" hidden></div>
@@ -216,22 +314,72 @@ function renderDetail() {
     .map((c) => `<li><a class="sha" href="https://github.com/${esc(repo)}/commit/${esc(c.sha)}" target="_blank" rel="noopener">${esc(c.sha)}</a><span>${esc(c.subject)}</span></li>`)
     .join('');
 
+  const editing = state.editing && Boolean(user);
   $('detail').innerHTML = `
   <div class="panel">
     <div class="panel-top">
       <div><div class="id">${ticket.id}</div><h2>${esc(ticket.title)}</h2></div>
-      <button id="close" aria-label="Close ticket">Close</button>
+      <div class="panel-actions">
+        ${user && !editing ? '<button id="edit">Edit</button>' : ''}
+        <button id="close" aria-label="Close ticket">Close</button>
+      </div>
     </div>
-    <div class="facts">${facts}</div>
+    ${editing
+      ? editForm(ticket)
+      : `<div class="facts">${facts}</div>
     ${renderBody(ticket.body)}
-    ${commits ? `<h4 class="heading">Commits</h4><ul class="commits">${commits}</ul>` : ''}
+    ${commits ? `<h4 class="heading">Commits</h4><ul class="commits">${commits}</ul>` : ''}`}
   </div>`;
   $('close').onclick = closeDetail;
+  if ($('edit')) {
+    $('edit').onclick = () => {
+      state.editing = true;
+      render();
+      $('edit-form').querySelector('[name=title]').focus();
+    };
+  }
+  if (editing) bindEditForm(ticket);
+}
+
+function bindEditForm(ticket) {
+  const showError = (message) => {
+    $('edit-error').textContent = message;
+    $('edit-error').hidden = false;
+  };
+  $('cancel-edit').onclick = () => {
+    state.editing = false;
+    render();
+  };
+  $('edit-form').onsubmit = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    const patch = {
+      title: form.get('title').trim(),
+      status: form.get('status'),
+      priority: form.get('priority') || null,
+      effort: form.get('effort') || null,
+      type: form.get('type'),
+      body: form.get('body').replace(/\r\n/g, '\n').trim(),
+    };
+    if (!patch.title) return showError('Enter a title.');
+    if (patch.status !== 'completed' && !patch.priority) return showError('Choose a priority for tickets that are not completed.');
+
+    const submit = event.target.querySelector('[type=submit]');
+    submit.disabled = true;
+    const error = await saveTicket(ticket.id, patch);
+    if (error) {
+      submit.disabled = false;
+      return showError(error);
+    }
+    state.editing = false;
+    render();
+  };
 }
 
 function closeDetail() {
   if (!state.ticket) return;
   state.ticket = '';
+  state.editing = false;
   render();
 }
 
@@ -246,16 +394,60 @@ function render() {
   $('view').setAttribute('aria-labelledby', `tab-${state.view}`);
   $('view').innerHTML = RENDERERS[state.view](tickets.filter((t) => !state.project || t.project === state.project));
   for (const el of $('view').querySelectorAll('[data-id]')) {
-    el.onclick = () => {
+    const open = () => {
       state.ticket = el.dataset.id;
+      state.editing = false;
       render();
       $('close').focus();
+    };
+    el.onclick = open;
+    el.onkeydown = (event) => {
+      if (event.target !== el || (event.key !== 'Enter' && event.key !== ' ')) return;
+      event.preventDefault();
+      open();
     };
   }
   document.body.classList.toggle('board-view', state.view === 'board');
   if (state.view === 'board') fitBoard();
+  updateSessionBar();
   renderDetail();
   writeHash();
+}
+
+// Cards can be dragged to another column to change their status, once signed in.
+function setupDragAndDrop() {
+  const view = $('view');
+  let dragged = '';
+  const clearDropTargets = () => view.querySelectorAll('.drop, .dragging').forEach((el) => el.classList.remove('drop', 'dragging'));
+
+  view.addEventListener('dragstart', (event) => {
+    const card = event.target.closest?.('.card');
+    if (!card || !user) return event.preventDefault();
+    dragged = card.dataset.id;
+    event.dataTransfer.setData('text/plain', dragged);
+    event.dataTransfer.effectAllowed = 'move';
+    card.classList.add('dragging');
+  });
+  view.addEventListener('dragover', (event) => {
+    const column = event.target.closest?.('.column');
+    if (!column || !dragged) return;
+    event.preventDefault();
+    view.querySelectorAll('.drop').forEach((el) => el !== column && el.classList.remove('drop'));
+    column.classList.add('drop');
+  });
+  view.addEventListener('drop', (event) => {
+    const column = event.target.closest?.('.column');
+    if (!column || !dragged) return;
+    event.preventDefault();
+    const id = dragged;
+    dragged = '';
+    clearDropTargets();
+    moveTicket(id, column.dataset.status);
+  });
+  view.addEventListener('dragend', () => {
+    dragged = '';
+    clearDropTargets();
+  });
 }
 
 function setupTabs() {
@@ -287,11 +479,26 @@ function setupProjectFilter() {
   };
 }
 
+function cancelOrClose() {
+  if (state.editing) {
+    state.editing = false;
+    render();
+  } else {
+    closeDetail();
+  }
+}
+
 readHash();
 setupTabs();
 setupProjectFilter();
-$('backdrop').onclick = closeDetail;
-document.addEventListener('keydown', (event) => event.key === 'Escape' && closeDetail());
+setupDragAndDrop();
+$('signin').onclick = () => {
+  rememberEditor(true);
+  location.href = `api/tickets/login?next=${encodeURIComponent(location.hash)}`;
+};
+$('backdrop').onclick = () => !state.editing && closeDetail();
+document.addEventListener('keydown', (event) => event.key === 'Escape' && cancelOrClose());
 window.addEventListener('resize', () => state.view === 'board' && requestAnimationFrame(fitBoard));
 render();
+checkSession().then(render);
 document.fonts.ready.then(() => state.view === 'board' && fitBoard());
