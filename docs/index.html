@@ -6,21 +6,26 @@
 <title>Logbook</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3' y='1' width='10' height='14' rx='1.5' fill='%23185FA5'/%3E%3Cpath d='M6 5h4M6 8h4' stroke='white' stroke-width='1.2'/%3E%3C/svg%3E">
 <style>
-:root{--warn:#d98e04;--warn-bg:#fbf1da;--over:#c0392b;--over-bg:#f9e1de;--bg:#f7f6f2;--surface:#fff;--sunken:#f0eee8;--text:#1c1c1a;--text2:#5f5e5a;--muted:#8a8982;--line:#e2e0d8;--line2:#c9c7be;--accent:#185fa5;--now:#c0392b;--next:#d98e04;--later:#9a988f}
+:root{--fs-s:12px;--fs-m:14px;--fs-l:18px;--warn:#d98e04;--warn-bg:#fbf1da;--over:#c0392b;--over-bg:#f9e1de;--bg:#f7f6f2;--surface:#fff;--sunken:#f0eee8;--text:#1c1c1a;--text2:#5f5e5a;--muted:#8a8982;--line:#e2e0d8;--line2:#c9c7be;--accent:#185fa5;--now:#c0392b;--next:#d98e04;--later:#9a988f}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--warn:#e8a62a;--warn-bg:#3a3020;--over:#e5685b;--over-bg:#3d2522;--bg:#1b1b19;--surface:#242422;--sunken:#2c2c29;--text:#ecebe6;--text2:#b4b2a9;--muted:#8a8982;--line:#3a3a36;--line2:#53524c;--accent:#85b7eb;--now:#e5685b;--next:#e8a62a;--later:#77756d}}
 :root[data-theme=dark]{--warn:#e8a62a;--warn-bg:#3a3020;--over:#e5685b;--over-bg:#3d2522;--bg:#1b1b19;--surface:#242422;--sunken:#2c2c29;--text:#ecebe6;--text2:#b4b2a9;--muted:#8a8982;--line:#3a3a36;--line2:#53524c;--accent:#85b7eb;--now:#e5685b;--next:#e8a62a;--later:#77756d}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);font:400 var(--fs-m)/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+h1,h2,h3,h4,p,ul{margin:0}
 .wrap{max-width:1100px;margin:0 auto;padding:20px 16px 48px}
 header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
-h1{font-size:20px;font-weight:600;margin:0}
-h1 small{font-weight:400;color:var(--muted);font-size:13px;margin-left:8px}
-.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
-.bar .sp{flex:1}
-button,select{font:inherit;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+h1{font-size:var(--fs-l);font-weight:600}
+h1 small{font-size:var(--fs-s);font-weight:400;color:var(--muted);margin-left:8px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+button,select{font:inherit;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
 button:hover,select:hover{border-color:var(--line2)}
-button[aria-pressed=true]{background:var(--sunken);border-color:var(--line2);font-weight:600}
-button:focus-visible,select:focus-visible,.card:focus-visible,.row:focus-visible,.cl:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:focus-visible,select:focus-visible,a:focus-visible,.card:focus-visible,.row:focus-visible,.cl:focus-visible,.tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);margin-bottom:16px}
+.tabs{display:flex;gap:20px}
+.tab{background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:8px 2px;margin-bottom:-1px;color:var(--text2)}
+.tab:hover{color:var(--text)}
+.tab[aria-selected=true]{color:var(--text);font-weight:600;border-bottom-color:var(--accent)}
+.bar select{margin-bottom:6px}
 .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .col{background:var(--sunken);border-radius:10px;padding:10px;min-width:0}
 .col.at{background:var(--warn-bg);outline:1px solid var(--warn)}
@@ -28,60 +33,62 @@ button:focus-visible,select:focus-visible,.card:focus-visible,.row:focus-visible
 .col .lim{font-weight:600;padding:0 8px;border-radius:10px}
 .col.at .lim{background:var(--warn);color:#1c1c1a}
 .col.over .lim{background:var(--over);color:#fff}
-.col h2{font-size:12px;font-weight:600;color:var(--text2);margin:2px 4px 10px;display:flex;justify-content:space-between;text-transform:uppercase;letter-spacing:.04em}
+.col h2,.grp,.panel h4{font-size:var(--fs-s);font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
+.col h2{margin:2px 4px 10px;display:flex;justify-content:space-between}
 .card{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:8px;cursor:pointer}
 .card:hover{border-color:var(--line2)}
-.card.rec,.cl.rec .t{}
-.card.rec{border-style:dashed}
 .card.sel{border-color:var(--accent)}
-.id{font:11px ui-monospace,Consolas,monospace;color:var(--muted)}
-.ttl{font-size:14px;margin:2px 0 8px;line-height:1.35}
-.meta{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:12px;color:var(--text2)}
-.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-.pill{font-size:11px;padding:1px 8px;border-radius:10px;background:var(--sunken);border:1px solid var(--line);color:var(--text2);white-space:nowrap}
-.pill.rec{border-style:dashed}
-.more{font-size:12px;color:var(--text2);padding:4px}
-.grp{font-size:12px;font-weight:600;color:var(--text2);margin:20px 0 4px;text-transform:uppercase;letter-spacing:.04em;display:flex;gap:8px;align-items:center}
+.id{font-size:var(--fs-s);color:var(--muted)}
+.ttl{margin:2px 0 8px;line-height:1.35}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;font-size:var(--fs-s);color:var(--text2)}
+.mi{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.i{width:14px;height:14px;flex:none}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin:0 3px}
+.more,.empty{font-size:var(--fs-s);color:var(--muted);padding:4px}
+.empty{font-size:var(--fs-m);padding:12px 4px}
+.grp{margin:20px 0 4px;display:flex;gap:8px;align-items:center}
 .row{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:10px 4px}
 .row:hover{background:var(--surface)}
-.row .id{width:70px;flex:none}.row .t{flex:1;min-width:0}
-.cl{display:grid;grid-template-columns:90px 1fr;gap:14px;padding:14px 0;border-bottom:1px solid var(--line);cursor:pointer;width:100%;text-align:left;background:transparent;border-left:0;border-right:0;border-top:0;border-radius:0}
-.cl .d{font-size:12px;color:var(--text2);padding-top:2px}
-.cl .t{font-size:15px;font-weight:600}
-.cl p{margin:4px 0 8px;color:var(--text2);font-size:14px}
-.sha{font:11px ui-monospace,Consolas,monospace;padding:1px 6px;border-radius:4px;background:var(--sunken);color:var(--accent);text-decoration:none}
+.row .id{width:64px;flex:none}.row .t{flex:1;min-width:0}
+.row .meta{gap:14px}
+.cl{display:grid;grid-template-columns:96px 1fr;gap:14px;padding:14px 0;border:0;border-bottom:1px solid var(--line);cursor:pointer;width:100%;text-align:left;background:transparent;border-radius:0}
+.cl .d{font-size:var(--fs-s);color:var(--text2);padding-top:2px}
+.cl .t{font-weight:600}
+.cl p{margin:4px 0 8px;color:var(--text2)}
+.sha{font-size:var(--fs-s);padding:1px 6px;border-radius:4px;background:var(--sunken);color:var(--accent);text-decoration:none}
 a.sha:hover{text-decoration:underline}
-.empty{color:var(--muted);font-size:14px;padding:12px 4px}
 #detail{position:fixed;top:0;right:0;bottom:0;width:min(480px,100%);background:var(--surface);border-left:1px solid var(--line);overflow-y:auto;z-index:20;transform:translateX(100%);visibility:hidden;transition:transform .2s ease,visibility 0s .2s}
 #detail.open{transform:none;visibility:visible;transition:transform .2s ease}
 #backdrop{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:10;opacity:0;pointer-events:none;transition:opacity .2s}
 #backdrop.open{opacity:1;pointer-events:auto}
 @media (prefers-reduced-motion:reduce){#detail,#detail.open,#backdrop{transition:none}}
 .panel{padding:20px 22px 32px}
-.panel h3{font-size:17px;margin:4px 0 8px}
-.panel h4{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);margin:16px 0 4px}
-.panel p{margin:0 0 8px;font-size:14px}
-.clist{list-style:none;padding:0;margin:0;font-size:13px}
-.clist li{display:flex;gap:10px;padding:5px 0;border-top:1px solid var(--line)}
-.top{display:flex;justify-content:space-between;gap:8px;align-items:start}
-@media (max-width:560px){.cl{grid-template-columns:1fr;gap:2px}.row .id{width:60px}}
+.panel .top{display:flex;justify-content:space-between;gap:12px;align-items:start}
+.panel h2{font-size:var(--fs-l);font-weight:600;margin:2px 0 0;line-height:1.3}
+.facts{display:flex;flex-wrap:wrap;gap:8px 18px;margin:14px 0 4px;color:var(--text2)}
+.panel h4{margin:20px 0 6px}
+.panel p+p{margin-top:8px}
+.clist{list-style:none;padding:0}
+.clist li{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line)}
+@media (max-width:560px){.cl{grid-template-columns:1fr;gap:2px}.row .id{width:56px}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Logbook<small id="gen"></small></h1>
-    <div style="display:flex;gap:8px"><a id="repo" href="https://github.com/simonsablowski/logbook"><button>Repository</button></a></div>
+    <a href="https://github.com/simonsablowski/logbook"><button type="button">Repository</button></a>
   </header>
-  <div class="bar" role="toolbar" aria-label="View and filter">
-    <button data-v="board" aria-pressed="true">Board</button>
-    <button data-v="backlog" aria-pressed="false">Backlog</button>
-    <button data-v="changelog" aria-pressed="false">Changelog</button>
-    <span class="sp"></span>
-    <label for="proj" style="position:absolute;left:-9999px">Project</label>
+  <div class="bar">
+    <div class="tabs" role="tablist" aria-label="Views">
+      <button class="tab" role="tab" data-v="board" id="tab-board" aria-controls="view">Board</button>
+      <button class="tab" role="tab" data-v="backlog" id="tab-backlog" aria-controls="view">Backlog</button>
+      <button class="tab" role="tab" data-v="changelog" id="tab-changelog" aria-controls="view">Changelog</button>
+    </div>
+    <label for="proj" class="sr">Project</label>
     <select id="proj"></select>
   </div>
-  <main id="view"></main>
+  <main id="view" role="tabpanel"></main>
   <div id="backdrop"></div>
   <aside id="detail" aria-label="Ticket details"></aside>
 </div>
@@ -94,28 +101,45 @@ const LBL = Object.fromEntries(COLS);
 const LIMITS = { planned: 6, 'in-progress': 2 };
 const PRI = { now: ['var(--now)','Now'], next: ['var(--next)','Next'], later: ['var(--later)','Later'] };
 const RANK = { now: 0, next: 1, later: 2 };
+const SIZE = { S: 'Small', M: 'Medium', L: 'Large' };
+const ICON = {
+  idea: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+  planned: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
+  'in-progress': '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+  completed: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>',
+  type: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1"/>',
+  effort: '<path d="M5 20v-6M12 20V9M19 20V4"/>',
+  date: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>'
+};
+const ico = n => `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
+const mi = (icon, label, text) => `<span class="mi" title="${label}">${ico(icon)}<span class="sr">${label}: </span>${esc(text)}</span>`;
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : '';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = d => !d ? '' : /^\d{4}-\d\d-\d\d$/.test(d) ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : d;
 let st = { v: 'board', p: '', t: '' };
 try { Object.assign(st, Object.fromEntries(new URLSearchParams(location.hash.slice(1)))); } catch (e) {}
 const sync = () => { const q = new URLSearchParams(); for (const k in st) if (st[k] && !(k === 'v' && st[k] === 'board')) q.set(k, st[k]); history.replaceState(null, '', '#' + q); };
 const dot = p => p && PRI[p] ? `<span class="dot" style="background:${PRI[p][0]}" aria-hidden="true"></span>` : '';
+const prio = p => p && PRI[p] ? `<span class="mi" title="Priority">${dot(p)}<span class="sr">Priority: </span>${PRI[p][1]}</span>` : '';
+const effort = t => t.effort ? `<span class="mi" title="Effort: ${SIZE[t.effort]}">${ico('effort')}<span class="sr">Effort: ${SIZE[t.effort]}</span><span aria-hidden="true">${t.effort}</span></span>` : '';
 const byPri = (a, b) => (RANK[a.priority] ?? 3) - (RANK[b.priority] ?? 3) || a.id.localeCompare(b.id);
-const pill = t => t.origin === 'reconstructed' && !t.verified ? `<span class="pill rec" title="Reconstructed from git history; confidence ${esc(t.confidence)}">reconstructed</span>` : '';
+const byDone = (a, b) => b.completed.localeCompare(a.completed) || b.id.localeCompare(a.id);
 const shaLink = (t, c) => `<a class="sha" href="https://github.com/${esc(P[t.project].repo)}/commit/${esc(c.sha)}" target="_blank" rel="noopener">${esc(c.sha)}</a>`;
+const EMPTY = /^(not documented\.?|n\/a|tbd|-)?$/i;
 
-const card = t => `<button class="card ${t.origin === 'reconstructed' && !t.verified ? 'rec' : ''} ${st.t === t.id ? 'sel' : ''}" data-id="${t.id}">
+const card = t => `<button class="card ${st.t === t.id ? 'sel' : ''}" data-id="${t.id}">
   <div class="id">${t.id} · ${esc(P[t.project].name)}</div><div class="ttl">${esc(t.title)}</div>
-  <div class="meta">${dot(t.priority)}${t.priority ? `<span>${PRI[t.priority][1]}</span>` : ''}<span style="flex:1"></span>${t.effort ? `<span class="pill">${t.effort}</span>` : ''}</div></button>`;
+  <div class="meta">${prio(t.priority)}<span style="flex:1"></span>${effort(t)}</div></button>`;
 
 function draw() {
-  document.querySelectorAll('[data-v]').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === st.v));
+  document.querySelectorAll('[data-v]').forEach(b => { const on = b.dataset.v === st.v; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; });
+  document.getElementById('view').setAttribute('aria-labelledby', 'tab-' + st.v);
   const L = T.filter(t => !st.p || t.project === st.p);
   let h = '';
   if (st.v === 'board') {
     h = '<div class="board">' + COLS.map(([k, n]) => {
       let x = L.filter(t => t.status === k);
-      x = k === 'completed' ? x.sort((a, b) => b.completed.localeCompare(a.completed) || b.id.localeCompare(a.id)) : x.sort(byPri);
+      x = k === 'completed' ? x.sort(byDone) : x.sort(byPri);
       const shown = k === 'completed' ? x.slice(0, 6) : x;
       const lim = LIMITS[k], total = T.filter(t => t.status === k).length;
       const state = lim && total > lim ? 'over' : lim && total === lim ? 'at' : '';
@@ -125,18 +149,19 @@ function draw() {
   } else if (st.v === 'backlog') {
     h = ['now', 'next', 'later'].map(p => {
       const x = L.filter(t => t.priority === p && t.status !== 'completed').sort(byPri);
-      return `<div class="grp">${dot(p)} ${PRI[p][1]} · ${x.length}</div>` + (x.map(t => `<button class="row" data-id="${t.id}"><span class="id">${t.id}</span><span class="t">${esc(t.title)}</span><span class="pill">${LBL[t.status]}</span>${t.effort ? `<span class="pill">${t.effort}</span>` : ''}</button>`).join('') || '<div class="empty">Nothing open</div>');
+      return `<div class="grp">${dot(p)} ${PRI[p][1]} · ${x.length}</div>` + (x.map(t => `<button class="row" data-id="${t.id}"><span class="id">${t.id}</span><span class="t">${esc(t.title)}</span><span class="meta">${mi(t.status, 'Status', LBL[t.status])}${effort(t)}</span></button>`).join('') || '<div class="empty">Nothing open</div>');
     }).join('');
   } else {
-    const x = L.filter(t => t.status === 'completed').sort((a, b) => b.completed.localeCompare(a.completed) || b.id.localeCompare(a.id));
-    h = x.map(t => `<button class="cl" data-id="${t.id}"><div class="d">${fmt(t.completed)}</div><div><div class="t">${esc(t.title)}</div>${(s => EMPTY.test(s) ? '' : `<p>${esc(s)}</p>`)((t.body.split('## Summary')[1] || '').split('##')[0].trim())}<div class="meta"><span class="id">${t.id}</span><span>${esc(P[t.project].name)}</span>${pill(t)}</div></div></button>`).join('') || '<div class="empty">Nothing completed yet.</div>';
+    h = L.filter(t => t.status === 'completed').sort(byDone).map(t => {
+      const s = (t.body.split('## Summary')[1] || '').split('##')[0].trim();
+      return `<button class="cl" data-id="${t.id}"><div class="d">${fmt(t.completed)}</div><div><div class="t">${esc(t.title)}</div>${EMPTY.test(s) ? '' : `<p>${esc(s)}</p>`}<div class="meta"><span>${t.id}</span><span>${esc(P[t.project].name)}</span></div></div></button>`;
+    }).join('') || '<div class="empty">Nothing completed yet.</div>';
   }
   document.getElementById('view').innerHTML = h;
   document.querySelectorAll('[data-id]').forEach(e => e.onclick = () => { st.t = e.dataset.id; draw(); document.getElementById('close').focus(); });
   detail(); sync();
 }
 
-const EMPTY = /^(not documented\.?|n\/a|tbd|-)?$/i;
 const paras = s => s.split(/\n{2,}/).map(b => `<p>${esc(b.trim())}</p>`).join('');
 function md(s) {
   const [intro, ...secs] = s.split(/^## /m);
@@ -153,22 +178,33 @@ function detail() {
   el.classList.toggle('open', !!t);
   document.getElementById('backdrop').classList.toggle('open', !!t);
   if (!t) return;
-  el.innerHTML = `<div class="panel"><div class="top"><div><span class="id">${t.id}</span> · <a href="${esc(P[t.project].url)}" target="_blank" rel="noopener" style="color:var(--text2)">${esc(P[t.project].name)}</a><h3>${esc(t.title)}</h3></div><button id="close" aria-label="Close ticket">Close</button></div>
-  <div class="meta">${dot(t.priority)}${t.priority ? `<span>${PRI[t.priority][1]}</span>` : ''}<span class="pill">${LBL[t.status]}</span><span class="pill">${esc(t.type)}</span>${t.effort ? `<span class="pill">Effort ${t.effort}</span>` : ''}${t.completed ? `<span class="pill">${fmt(t.completed)}</span>` : ''}${pill(t)}</div>
+  el.innerHTML = `<div class="panel"><div class="top"><div><div class="id">${t.id}</div><h2>${esc(t.title)}</h2></div><button id="close" aria-label="Close ticket">Close</button></div>
+  <div class="facts">${mi(t.status, 'Status', LBL[t.status])}${mi('type', 'Type', cap(t.type))}${t.effort ? mi('effort', 'Effort', SIZE[t.effort]) : ''}${t.completed ? mi('date', 'Completed', fmt(t.completed)) : ''}${prio(t.priority)}</div>
   ${md(t.body)}
   ${t.commits.length ? `<h4>Commits</h4><ul class="clist">${t.commits.map(c => `<li>${shaLink(t, c)}<span>${esc(c.subject)}</span></li>`).join('')}</ul>` : ''}</div>`;
-  document.getElementById('close').onclick = () => { st.t = ''; draw(); };
+  document.getElementById('close').onclick = closeDetail;
 }
 
 const closeDetail = () => { if (st.t) { st.t = ''; draw(); } };
 document.getElementById('backdrop').onclick = closeDetail;
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+const VIEWS = ['board', 'backlog', 'changelog'];
+document.querySelectorAll('.tab').forEach(b => {
+  b.onclick = () => { st.v = b.dataset.v; draw(); };
+  b.onkeydown = e => {
+    const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+    if (!d) return;
+    e.preventDefault();
+    st.v = VIEWS[(VIEWS.indexOf(st.v) + d + VIEWS.length) % VIEWS.length];
+    draw();
+    document.getElementById('tab-' + st.v).focus();
+  };
+});
 const sel = document.getElementById('proj');
 sel.innerHTML = '<option value="">All projects</option>' + D.projects.map(p => `<option value="${p.prefix}">${p.prefix} · ${esc(p.name)}</option>`).join('');
 sel.value = P[st.p] ? st.p : ''; if (!P[st.p]) st.p = '';
 sel.onchange = () => { st.p = sel.value; draw(); };
-document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { st.v = b.dataset.v; draw(); });
-if (!['board','backlog','changelog'].includes(st.v)) st.v = 'board';
+if (!VIEWS.includes(st.v)) st.v = 'board';
 document.getElementById('gen').textContent = 'updated ' + new Date(D.generated).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 draw();
 </script>

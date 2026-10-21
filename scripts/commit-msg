@@ -5,7 +5,7 @@ first_line=$(head -n 1 "$1")
 case "$first_line" in
   Merge*|Revert*|fixup!*|squash!*) exit 0 ;;
 esac
-if ! printf '%s' "$first_line" | grep -Eq '^(CRS|RSR|MTV|SIM|IKS|DBP|NOR|NMB|BEU)-[0-9]+: .+'; then
+if ! printf '%s' "$first_line" | grep -Eq '^(CRS|RSR|MTV|SIM|IKS|DBP|NOR|NMB|BEU|LGB)-[0-9]+: .+'; then
   echo "Commit message must start with a ticket ID, e.g. 'MTV-014: Add footer newsletter form'." >&2
   exit 1
 fi

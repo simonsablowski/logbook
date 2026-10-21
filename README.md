@@ -17,6 +17,7 @@ Tickets are Markdown files in `tickets/`. `npm run build` validates them and gen
 | NOR | norahammer.com | `simonsablowski/norahammer` |
 | NMB | notmybiz.com | `simonsablowski/notmybiz-lp` |
 | BEU | beatemup.simsab.net | `simonsablowski/beatemup` |
+| LGB | logbook.simsab.net | `simonsablowski/logbook` |
 
 The registry lives in `projects.json`. Every project must have a GitHub repository.
 
@@ -67,4 +68,4 @@ Published at https://logbook.simsab.net through GitHub Pages (branch `main`, fol
 
 ## Status
 
-The 2026 revival of all nine projects is backfilled from git history: 84 tickets in total, starting with the rebuilds in September and October 2026. Older history is deliberately not covered.
+The 2026 revival of all ten projects is backfilled from git history: 89 tickets in total, starting with the rebuilds in September and October 2026. Older history is deliberately not covered.

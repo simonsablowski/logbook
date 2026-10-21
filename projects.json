@@ -7,5 +7,6 @@
   { "prefix": "DBP", "name": "dbp12.simsab.net", "repo": "simonsablowski/dbp12", "url": "https://dbp12.simsab.net" },
   { "prefix": "NOR", "name": "norahammer.com", "repo": "simonsablowski/norahammer", "url": "https://norahammer.com" },
   { "prefix": "NMB", "name": "notmybiz.com", "repo": "simonsablowski/notmybiz-lp", "url": "https://notmybiz.com" },
-  { "prefix": "BEU", "name": "beatemup.simsab.net", "repo": "simonsablowski/beatemup", "url": "https://beatemup.simsab.net" }
+  { "prefix": "BEU", "name": "beatemup.simsab.net", "repo": "simonsablowski/beatemup", "url": "https://beatemup.simsab.net" },
+  { "prefix": "LGB", "name": "logbook.simsab.net", "repo": "simonsablowski/logbook", "url": "https://logbook.simsab.net" }
 ]
