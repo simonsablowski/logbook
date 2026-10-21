@@ -37,6 +37,7 @@ const ICONS = {
   effort: '<path d="M5 20v-6M12 20V9M19 20V4"/>',
   date: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
   grip: '<circle cx="9" cy="6" r="1.3" fill="currentColor"/><circle cx="15" cy="6" r="1.3" fill="currentColor"/><circle cx="9" cy="12" r="1.3" fill="currentColor"/><circle cx="15" cy="12" r="1.3" fill="currentColor"/><circle cx="9" cy="18" r="1.3" fill="currentColor"/><circle cx="15" cy="18" r="1.3" fill="currentColor"/>',
 };
 
@@ -114,7 +115,7 @@ function renderBody(body) {
 
 // View state, kept in the URL hash (#v=changelog&p=MTV&t=MTV-023) ------
 
-const state = { view: 'board', project: '', ticket: '', editing: false, creating: false };
+const state = { view: 'board', project: '', ticket: '', editing: false, creating: false, projectForm: null };
 
 function readHash() {
   const params = new URLSearchParams(location.hash.slice(1));
@@ -339,7 +340,7 @@ const swatch = (project) => {
 };
 
 const renderProjects = () => {
-  const head = (user ? ['', ...PROJECT_COLUMNS] : PROJECT_COLUMNS).map((label) => `<th scope="col">${label}</th>`).join('');
+  const head = (user ? ['', ...PROJECT_COLUMNS, ''] : PROJECT_COLUMNS).map((label) => `<th scope="col">${label}</th>`).join('');
   const rows = projects
     .map((p) => `
       <tr data-prefix="${p.prefix}"${user ? ' draggable="true"' : ''}>
@@ -347,12 +348,143 @@ const renderProjects = () => {
         <td>${swatch(p)}</td>
         <td class="prefix">${esc(p.prefix)}</td>
         <td>${esc(p.name)}</td>
-        <td><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url.replace(/^https?:\/\//, ''))}</a></td>
+        <td>${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url.replace(/^https?:\/\//, ''))}</a>` : '<span class="muted">none</span>'}</td>
         <td><a href="https://github.com/${esc(p.repo)}" target="_blank" rel="noopener">github.com/${esc(p.repo)}</a></td>
+        ${user ? `<td class="actions"><button class="icon-button" type="button" data-edit-project="${p.prefix}" title="Edit ${esc(p.name)}" aria-label="Edit ${esc(p.name)}">${icon('edit')}</button></td>` : ''}
       </tr>`)
     .join('');
-  return `<div class="table-wrap"><table class="projects"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  const add = user ? `<button class="add-card add-project" type="button" data-add-project>${icon('plus')}New project</button>` : '';
+  return `<div class="table-wrap"><table class="projects"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>${add}`;
 };
+
+// Adding and editing a project --------------------------------------
+// The prefix is chosen once, when the project is added, and cannot be changed later: it is part of
+// every ticket ID and of the commit messages in the repositories.
+
+// First three consonants of the name, then the next variants: "courses.simsab.net" gives CRS, CRE, ...
+function prefixCandidates(name) {
+  const letters = [...name.split('.')[0].toUpperCase().replace(/[^A-Z]/g, '')];
+  const consonants = letters.filter((letter) => !'AEIOU'.includes(letter));
+  const pool = consonants.length >= 3 ? consonants : letters;
+  const found = [];
+  for (let i = 0; i < pool.length; i++) {
+    for (let j = i + 1; j < pool.length; j++) {
+      for (let k = j + 1; k < pool.length; k++) found.push(pool[i] + pool[j] + pool[k]);
+    }
+  }
+  return [...new Set(found)];
+}
+
+const suggestPrefix = (name) => prefixCandidates(name).find((prefix) => !projectByPrefix[prefix]) ?? '';
+
+function prefixProblem(prefix) {
+  if (!/^[A-Z]{3}$/.test(prefix)) return 'Use exactly three capital letters.';
+  const used = projectByPrefix[prefix];
+  return used ? `${prefix} is already used by ${used.name}.` : '';
+}
+
+const projectFormHtml = (creating, project) => `
+  <form id="project-form" class="edit" novalidate>
+    <label>Name<input name="name" value="${esc(project.name)}" placeholder="shop.example.com" autocomplete="off"></label>
+    ${creating
+      ? `<label>Prefix<input name="prefix" maxlength="3" autocomplete="off" spellcheck="false" placeholder="ABC"></label>
+    <p id="prefix-hint" class="hint"></p>`
+      : `<p class="hint">The prefix ${esc(project.prefix)} cannot be changed. It is part of every ticket ID and commit message.</p>`}
+    <label>Live site<input name="url" value="${esc(project.url ?? '')}" placeholder="https://example.com" autocomplete="off"></label>
+    <label>Repository on GitHub<input name="repo" value="${esc(project.repo)}" placeholder="owner/name" autocomplete="off" spellcheck="false"></label>
+    <p id="edit-error" class="edit-error" role="alert" hidden></p>
+    <div class="edit-actions"><button type="submit" class="primary">${creating ? 'Add project' : 'Save'}</button><button type="button" id="cancel-edit">Cancel</button></div>
+  </form>`;
+
+function renderProjectForm() {
+  const creating = state.projectForm.mode === 'create';
+  const project = creating ? { prefix: '', name: '', repo: '' } : projectByPrefix[state.projectForm.prefix];
+  $('detail').classList.add('open');
+  $('backdrop').classList.add('open');
+  $('detail').innerHTML = `
+  <div class="panel">
+    <div class="panel-top">
+      <div><div class="id">${creating ? 'New project' : esc(project.prefix)}</div><h2>${creating ? 'Add a project' : esc(project.name)}</h2></div>
+      <div class="panel-actions"><button id="close" type="button" aria-label="Close">Close</button></div>
+    </div>
+    ${projectFormHtml(creating, project)}
+  </div>`;
+  $('close').onclick = closeDetail;
+  bindProjectForm(creating, project);
+}
+
+function bindProjectForm(creating, project) {
+  const form = $('project-form');
+  const field = (name) => form.elements.namedItem(name);
+  const showError = (message) => {
+    $('edit-error').textContent = message;
+    $('edit-error').hidden = false;
+  };
+  let touched = false; // once the prefix is typed by hand, it is no longer suggested
+
+  const checkPrefix = () => {
+    const prefix = field('prefix').value;
+    const problem = prefix || touched ? prefixProblem(prefix) : '';
+    $('prefix-hint').classList.toggle('bad', Boolean(problem) && touched);
+    $('prefix-hint').textContent =
+      problem || (prefix ? `${prefix} is free${touched ? '' : ', suggested from the name'}.` : 'The prefix is suggested from the name. You can type your own: three capital letters.');
+  };
+
+  if (creating) {
+    field('name').addEventListener('input', () => {
+      if (!touched) field('prefix').value = suggestPrefix(field('name').value);
+      checkPrefix();
+    });
+    field('prefix').addEventListener('input', () => {
+      touched = true;
+      field('prefix').value = field('prefix').value.toUpperCase().replace(/[^A-Z]/g, '');
+      checkPrefix();
+    });
+    checkPrefix();
+  }
+
+  $('cancel-edit').onclick = closeDetail;
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    const fields = { name: field('name').value.trim(), url: field('url').value.trim(), repo: field('repo').value.trim() };
+    if (!fields.name) return showError('Enter a name.');
+    if (creating) {
+      const problem = prefixProblem(field('prefix').value);
+      if (problem) {
+        touched = true;
+        checkPrefix();
+        return showError(problem);
+      }
+    }
+    const submit = form.querySelector('[type=submit]');
+    submit.disabled = true;
+    const { error, result } = creating
+      ? await send('POST', 'api/tickets/projects', { prefix: field('prefix').value, ...fields })
+      : await send('PATCH', `api/tickets/projects/${project.prefix}`, fields);
+    if (error) {
+      submit.disabled = false;
+      return showError(error);
+    }
+    if (creating) {
+      projects.push(result);
+      projectByPrefix[result.prefix] = result;
+    } else {
+      for (const key of Object.keys(project)) delete project[key];
+      Object.assign(project, result);
+    }
+    state.projectForm = null;
+    render();
+  };
+}
+
+function openProjectForm(form) {
+  state.projectForm = form;
+  state.ticket = '';
+  state.creating = false;
+  state.editing = false;
+  render();
+  $('project-form').elements.namedItem('name').focus();
+}
 
 // Puts the projects in the order of the given prefixes, in place.
 const applyOrder = (order) => projects.sort((a, b) => order.indexOf(a.prefix) - order.indexOf(b.prefix));
@@ -482,6 +614,7 @@ const RENDERERS = { projects: renderProjects, board: renderBoard, backlog: rende
 // Detail drawer ------------------------------------------------------
 
 function renderDetail() {
+  if (state.projectForm && user) return renderProjectForm();
   const creating = state.creating && Boolean(user);
   const ticket = creating ? blankTicket() : tickets.find((t) => t.id === state.ticket);
   $('detail').classList.toggle('open', Boolean(ticket));
@@ -573,10 +706,11 @@ function bindEditForm(ticket, creating) {
 }
 
 function closeDetail() {
-  if (!state.ticket && !state.creating) return;
+  if (!state.ticket && !state.creating && !state.projectForm) return;
   state.ticket = '';
   state.editing = false;
   state.creating = false;
+  state.projectForm = null;
   render();
 }
 
@@ -584,6 +718,7 @@ function closeDetail() {
 
 function render() {
   closePalette();
+  if (state.view !== 'projects') state.projectForm = null;
   for (const tab of document.querySelectorAll('.tab')) {
     const selected = tab.dataset.view === state.view;
     tab.setAttribute('aria-selected', selected);
@@ -751,6 +886,9 @@ $('signin').onclick = () => {
   location.href = `api/tickets/login?next=${encodeURIComponent(location.hash)}`;
 };
 $('view').addEventListener('click', (event) => {
+  if (event.target.closest('[data-add-project]')) return openProjectForm({ mode: 'create' });
+  const editButton = event.target.closest('[data-edit-project]');
+  if (editButton) return openProjectForm({ mode: 'edit', prefix: editButton.dataset.editProject });
   if (event.target.closest('.add-card')) return startCreating();
   const picker = event.target.closest('[data-pick]');
   if (picker) {
@@ -770,7 +908,7 @@ $('signout').onclick = () => {
   location.href = `/cdn-cgi/access/logout?returnTo=${encodeURIComponent(`${location.origin}/`)}`;
 };
 document.addEventListener('click', (event) => !event.target.closest('#account') && closeAccountMenu());
-$('backdrop').onclick = () => !state.editing && !state.creating && closeDetail();
+$('backdrop').onclick = () => !state.editing && !state.creating && !state.projectForm && closeDetail();
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   if (!$('palette').hidden) closePalette();

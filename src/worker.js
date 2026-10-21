@@ -1,6 +1,6 @@
 import { authenticate } from './auth.js';
 import { syncCommits } from './commits.js';
-import { COLOURS, patchProject, reorderProjects } from './projects.js';
+import { COLOURS, createProject, patchProject, reorderProjects } from './projects.js';
 import { backup, mutate, mutateProjects, readProjects, readSyncState, readTickets } from './store.js';
 import { HttpError, createTicket, patchTicket } from './tickets.js';
 
@@ -38,6 +38,14 @@ async function handleApi(request, env, url, auth) {
   }
 
   // Everything that changes data lives under /api/tickets, the path Cloudflare Access protects.
+  if (pathname === '/api/tickets/projects' && method === 'POST') {
+    const input = await readJson(request);
+    return reply(await mutateProjects(env, (projects) => {
+      const project = createProject(projects, input);
+      return { projects: [...projects, project], result: project };
+    }), 201);
+  }
+
   if (pathname === '/api/tickets/projects/order' && method === 'PUT') {
     const { order } = await readJson(request);
     return reply(await mutateProjects(env, (projects) => {
@@ -52,7 +60,7 @@ async function handleApi(request, env, url, auth) {
     return reply(await mutateProjects(env, (projects) => {
       const index = projects.findIndex((p) => p.prefix === projectPrefix);
       if (index < 0) throw new HttpError(404, `No project ${projectPrefix}`);
-      const project = patchProject(projects[index], patch);
+      const project = patchProject(projects[index], patch, projects);
       return { projects: projects.with(index, project), result: project };
     }));
   }

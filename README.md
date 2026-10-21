@@ -6,7 +6,7 @@ Tickets and projects are **not** stored in this repository. They live in a priva
 
 ## Projects
 
-The list of projects is stored in the bucket as `projects.json`, like the tickets: for each project a three-letter prefix, the name, the URL of the live site and the repository. Read it with `GET /api/data`. The order of the list is the order of the Projects tab and of the project filter; it is set by drag and drop in the Projects tab and stored in the bucket. A ticket ID is the prefix of its project and a number, for example `MTV-014`. Every project must have a GitHub repository.
+The list of projects is stored in the bucket as `projects.json`, like the tickets: for each project a three-letter prefix, the name, the URL of the live site and the repository. Read it with `GET /api/data`. The order of the list is the order of the Projects tab and of the project filter; it is set by drag and drop in the Projects tab and stored in the bucket. Name, live site and repository can be edited there and new projects can be added; the prefix is chosen once when a project is added (the viewer suggests the first three consonants of the name and checks that it is free) and can never be changed, because it is part of every ticket ID and of the commit messages in the repositories. A ticket ID is the prefix of its project and a number, for example `MTV-014`. Every project must have a GitHub repository.
 
 ## Architecture
 

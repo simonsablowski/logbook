@@ -340,6 +340,47 @@ select:hover,
   text-decoration: underline;
 }
 
+.muted {
+  color: var(--muted);
+}
+
+.hint {
+  margin-top: 6px;
+  color: var(--text2);
+  font-size: var(--fs-s);
+}
+
+.hint.bad {
+  color: var(--now);
+}
+
+.actions {
+  width: 40px;
+  padding-right: 0;
+}
+
+.icon-button {
+  display: inline-flex;
+  padding: 4px;
+  background: none;
+  border: 0;
+  color: var(--muted);
+}
+
+.icon-button:hover {
+  color: var(--text);
+}
+
+.icon-button .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.add-project {
+  min-height: 48px;
+  margin-top: 12px;
+}
+
 .grip-cell {
   width: 32px;
   padding-right: 0;
