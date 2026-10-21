@@ -700,6 +700,19 @@ button.swatch:hover {
   text-align: left;
 }
 
+/* Status and effort of the backlog rows stand in two fixed columns, so that they line up below each other. */
+.row .meta {
+  display: grid;
+  grid-template-columns: 100px 36px;
+  gap: 0 8px;
+}
+
+/* S, M and L are equally wide, so that the effort icon has the same place on every card and row. */
+.size {
+  display: inline-block;
+  width: 0.95em;
+}
+
 .row .id {
   width: 64px;
   flex: none;

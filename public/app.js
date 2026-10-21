@@ -274,7 +274,7 @@ const priorityFact = (priority) =>
 
 const effortFact = (ticket) =>
   ticket.effort
-    ? `<span class="fact" title="Effort: ${EFFORT_LABEL[ticket.effort]}">${icon('effort')}<span class="sr">Effort: ${EFFORT_LABEL[ticket.effort]}</span><span aria-hidden="true">${ticket.effort}</span></span>`
+    ? `<span class="fact" title="Effort: ${EFFORT_LABEL[ticket.effort]}">${icon('effort')}<span class="sr">Effort: ${EFFORT_LABEL[ticket.effort]}</span><span class="size" aria-hidden="true">${ticket.effort}</span></span>`
     : '';
 
 // The colour of the project of a ticket, as the custom property that tints cards and changelog entries.
