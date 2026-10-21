@@ -58,6 +58,7 @@ Why it was needed, or "Not documented."
 - Every commit in a project repository starts with the ticket ID: `MTV-014: Add newsletter signup form to footer`. Install the check with `cp scripts/commit-msg <project>/.git/hooks/commit-msg`.
 - Tickets whose history was derived from git are marked `origin: reconstructed` and shown with a dashed border until they are reviewed and set to `verified: true`.
 - Priorities: `now` is the current work list, `next` is queued, `later` is parked.
+- WIP limits on the board: planned max. 6, in-progress max. 2 (counted across all projects); ideas and completed are unlimited. A column turns amber at its limit and red above it. The limits live in `LIMITS` in `docs/index.html`.
 
 ## Viewing
 
