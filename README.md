@@ -68,6 +68,7 @@ node scripts/lb.mjs rm MTV-014
 ## Conventions
 
 - Everything in this repository is English: ticket text, UI and commit messages.
+- Titles and summaries of tickets are written in the imperative mood, like commit messages ("Add footer form", not "Added" or "Adds"), and stay that way after a ticket is completed.
 - The repository is public. Keep credentials and personal data out of the code.
 - Every commit in a project repository starts with the ticket ID: `MTV-014: Add newsletter signup form to footer`. Install the check with `cp scripts/commit-msg <project>/.git/hooks/commit-msg`.
 - Commits to this repository concern code only.
