@@ -1,25 +1,12 @@
 # Logbook
 
-A lightweight ticket system for the projects below: pending changes and ideas, prioritised, plus the history of what was implemented and in which commits.
+A lightweight ticket system for a set of projects: pending changes and ideas, prioritised, plus the history of what was implemented and in which commits.
 
-Tickets are **not** stored in this repository. They live in a private Cloudflare R2 bucket and are served by a Cloudflare Worker behind Cloudflare Access. This repository contains only code.
+Tickets and projects are **not** stored in this repository. They live in a private Cloudflare R2 bucket and are served by a Cloudflare Worker behind Cloudflare Access. This repository contains only code.
 
 ## Projects
 
-| Prefix | Project | Repository |
-|---|---|---|
-| CRS | courses.simsab.net | `simonsablowski/simsab-courses` |
-| RSR | resources.simsab.net | `simonsablowski/simsab-resources` |
-| MTV | motivado.com | `simonsablowski/motivado` |
-| SIM | simsab.net | `simonsablowski/simsab` |
-| IKS | shop.inkarnatoons.com | `simonsablowski/inkarnatoons-shop` |
-| DBP | dbp12.simsab.net | `simonsablowski/dbp12` |
-| NOR | norahammer.com | `simonsablowski/norahammer` |
-| NMB | notmybiz.com | `simonsablowski/notmybiz-lp` |
-| BEU | beatemup.simsab.net | `simonsablowski/beatemup` |
-| LGB | logbook | `simonsablowski/logbook` |
-
-The registry lives in `projects.json`. Every project must have a GitHub repository.
+The list of projects is stored in the bucket as `projects.json`, like the tickets: for each project a three-letter prefix, the name, the URL of the live site and the repository. Read it with `GET /api/data`. A ticket ID is the prefix of its project and a number, for example `MTV-014`. Every project must have a GitHub repository.
 
 ## Architecture
 
@@ -31,7 +18,7 @@ docs/      redirect page for logbook.simsab.net (GitHub Pages)
 test/      unit tests (npm test)
 ```
 
-- **Storage:** one JSON document (`tickets.json`) in the R2 bucket `logbook-tickets`. Writes are conditional on the document's ETag, so concurrent changes cannot overwrite each other. A scheduled run copies the document to `backups/<date>.json` every night and keeps the last 30.
+- **Storage:** two JSON documents in the R2 bucket `logbook-tickets`: `tickets.json` and `projects.json`. Writes are conditional on the document's ETag, so concurrent changes cannot overwrite each other. A scheduled run copies both documents to `backups/` every night (`<date>.json` and `<date>.projects.json`) and keeps the last 30 of each.
 - **Access:** every request except a public read must carry a valid Cloudflare Access token for the configured team domain and audience (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` in `wrangler.jsonc`). Without that configuration the Worker refuses such requests with 503. Browsers sign in through Access; command line clients use an Access service token. See [Access mode](#access-mode).
 - **Address:** https://logbook.empty-shape-d969.workers.dev. The DNS of simsab.net is not on Cloudflare, so `logbook.simsab.net` is a GitHub Pages site that redirects there.
 
@@ -71,6 +58,7 @@ node scripts/lb.mjs rm MTV-014
 
 - Everything in this repository is English: ticket text, UI and commit messages.
 - Titles and summaries of tickets are written in the imperative mood, like commit messages ("Add footer form", not "Added" or "Adds"), and stay that way after a ticket is completed.
+- Write tickets so that they are understandable without the conversation they came from: no references to chats or screenshots; describe images in words and give values such as colours as hex codes.
 - The repository is public. Keep credentials and personal data out of the code.
 - Every commit in a project repository starts with the ticket ID: `MTV-014: Add newsletter signup form to footer`. Install the check with `cp scripts/commit-msg <project>/.git/hooks/commit-msg`.
 - Commits to this repository concern code only.

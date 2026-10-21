@@ -1,9 +1,8 @@
-import projects from '../projects.json';
 import { authenticate } from './auth.js';
-import { backup, mutate, readTickets } from './store.js';
+import { backup, mutate, readProjects, readTickets } from './store.js';
 import { HttpError, createTicket, patchTicket } from './tickets.js';
 
-const prefixes = projects.map((p) => p.prefix);
+const readPrefixes = async (env) => (await readProjects(env)).map((p) => p.prefix);
 const today = () => new Date().toISOString().slice(0, 10);
 
 const reply = (body, status = 200) =>
@@ -29,7 +28,8 @@ async function handleApi(request, env, url, auth) {
   const ticketId = pathname.match(/^\/api\/tickets\/([A-Z]{3}-\d+)$/)?.[1];
 
   if (pathname === '/api/data' && method === 'GET') {
-    const tickets = (await readTickets(env)).sort((a, b) => a.id.localeCompare(b.id));
+    const [projects, tickets] = await Promise.all([readProjects(env), readTickets(env)]);
+    tickets.sort((a, b) => a.id.localeCompare(b.id));
     return reply({ projects, tickets, generated: new Date().toISOString(), user: auth.user });
   }
 
@@ -44,6 +44,7 @@ async function handleApi(request, env, url, auth) {
 
   if (pathname === '/api/tickets' && method === 'POST') {
     const input = await readJson(request);
+    const prefixes = await readPrefixes(env);
     return reply(await mutate(env, (tickets) => {
       const ticket = createTicket(input, tickets, prefixes, today());
       return { tickets: [...tickets, ticket], result: ticket };
@@ -52,6 +53,7 @@ async function handleApi(request, env, url, auth) {
 
   if (ticketId && method === 'PATCH') {
     const patch = await readJson(request);
+    const prefixes = await readPrefixes(env);
     return reply(await mutate(env, (tickets) => {
       const index = tickets.findIndex((t) => t.id === ticketId);
       if (index < 0) throw new HttpError(404, `No ticket ${ticketId}`);
