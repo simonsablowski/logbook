@@ -319,7 +319,10 @@ select {
 
 /* Projects ---------------------------------------------------------- */
 
+/* The 8 px of space around the rows of the table are pulled back, so that the column names stand
+   at the same height as the names of the Board columns and the Backlog lanes. */
 .table-wrap {
+  margin: -8px 0;
   overflow-x: auto;
 }
 
@@ -330,7 +333,7 @@ select {
 }
 
 .projects th {
-  padding: 0 14px;
+  padding: 2px 14px 0;
   text-align: left;
   white-space: nowrap;
   font-size: var(--fs-s);
@@ -411,7 +414,7 @@ select {
 
 .add-project {
   min-height: 48px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .grip-cell {
