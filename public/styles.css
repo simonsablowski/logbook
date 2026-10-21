@@ -4,6 +4,7 @@
   --fs-s: 12px;
   --fs-m: 14px;
   --fs-l: 18px;
+  --tint-strength: 18%; /* how strongly the colour of a project tints its cards and changelog entries */
 
   --bg: #f7f6f2;
   --surface: #fff;
@@ -539,7 +540,12 @@ button.swatch:hover {
 /* Cards are tinted subtly in the colour of their project. */
 .card {
   --tint: var(--surface);
-  background: color-mix(in srgb, var(--tint) 18%, var(--surface));
+  background: color-mix(in srgb, var(--tint) var(--tint-strength), var(--surface));
+}
+
+/* On a tinted card the grey of the ticket ID would be too faint. */
+.card .id {
+  color: var(--text2);
 }
 
 .card.selected {
@@ -661,16 +667,24 @@ button.swatch:hover {
 /* Changelog --------------------------------------------------------- */
 
 .entry {
+  --tint: var(--bg);
   display: grid;
   grid-template-columns: 96px 1fr;
   gap: 14px;
-  width: 100%;
-  padding: 14px 0;
-  background: transparent;
+  /* the tint reaches 12 px beyond the text, which keeps its alignment with the tabs */
+  width: calc(100% + 24px);
+  margin: 0 -12px;
+  padding: 14px 12px;
+  background: color-mix(in srgb, var(--tint) var(--tint-strength), var(--bg));
   border: 0;
   border-bottom: 1px solid var(--line);
   border-radius: 0;
   text-align: left;
+}
+
+/* A gap in the colour of the page keeps tinted entries apart. */
+.entry[style*="--tint"] {
+  border-bottom: 2px solid var(--bg);
 }
 
 .entry-date {

@@ -274,8 +274,11 @@ const effortFact = (ticket) =>
     ? `<span class="fact" title="Effort: ${EFFORT_LABEL[ticket.effort]}">${icon('effort')}<span class="sr">Effort: ${EFFORT_LABEL[ticket.effort]}</span><span aria-hidden="true">${ticket.effort}</span></span>`
     : '';
 
+// The colour of the project of a ticket, as the custom property that tints cards and changelog entries.
+const tintStyle = (ticket) => (projectOf(ticket).color ? ` style="--tint:${projectOf(ticket).color}"` : '');
+
 const card = (ticket) => `
-  <div class="card${ticket.id === state.ticket ? ' selected' : ''}" data-id="${ticket.id}" role="button" tabindex="0"${user ? ' draggable="true"' : ''}${projectOf(ticket).color ? ` style="--tint:${projectOf(ticket).color}"` : ''}>
+  <div class="card${ticket.id === state.ticket ? ' selected' : ''}" data-id="${ticket.id}" role="button" tabindex="0"${user ? ' draggable="true"' : ''}${tintStyle(ticket)}>
     <div class="id">${ticket.id}</div>
     <div class="card-title" title="${esc(ticket.title)}">${esc(ticket.title)}</div>
     <div class="meta">${ticket.completed ? fact('date', 'Completed', formatDate(ticket.completed)) : priorityFact(ticket.priority)}<span class="spacer"></span>${effortFact(ticket)}</div>
@@ -313,7 +316,7 @@ const backlogRow = (ticket) => `
 const changelogEntry = (ticket) => {
   const summary = summaryOf(ticket);
   return `
-  <button class="entry" data-id="${ticket.id}">
+  <button class="entry" data-id="${ticket.id}"${tintStyle(ticket)}>
     <div class="entry-date">${formatDate(ticket.completed)}</div>
     <div>
       <div class="entry-title">${esc(ticket.title)}</div>
