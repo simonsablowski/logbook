@@ -129,15 +129,23 @@ function draw() {
     }).join('');
   } else {
     const x = L.filter(t => t.status === 'completed').sort((a, b) => b.completed.localeCompare(a.completed) || b.id.localeCompare(a.id));
-    h = x.map(t => `<button class="cl" data-id="${t.id}"><div class="d">${fmt(t.completed)}</div><div><div class="t">${esc(t.title)}</div><p>${esc((t.body.split('## Summary')[1] || '').split('##')[0].trim())}</p><div class="meta"><span class="id">${t.id}</span><span>${esc(P[t.project].name)}</span>${pill(t)}</div></div></button>`).join('') || '<div class="empty">Nothing completed yet.</div>';
+    h = x.map(t => `<button class="cl" data-id="${t.id}"><div class="d">${fmt(t.completed)}</div><div><div class="t">${esc(t.title)}</div>${(s => EMPTY.test(s) ? '' : `<p>${esc(s)}</p>`)((t.body.split('## Summary')[1] || '').split('##')[0].trim())}<div class="meta"><span class="id">${t.id}</span><span>${esc(P[t.project].name)}</span>${pill(t)}</div></div></button>`).join('') || '<div class="empty">Nothing completed yet.</div>';
   }
   document.getElementById('view').innerHTML = h;
   document.querySelectorAll('[data-id]').forEach(e => e.onclick = () => { st.t = e.dataset.id; draw(); document.getElementById('close').focus(); });
   detail(); sync();
 }
 
+const EMPTY = /^(not documented\.?|n\/a|tbd|-)?$/i;
+const paras = s => s.split(/\n{2,}/).map(b => `<p>${esc(b.trim())}</p>`).join('');
 function md(s) {
-  return s.split(/\n{2,}/).map(b => b.startsWith('## ') ? `<h4>${esc(b.slice(3))}</h4>` : `<p>${esc(b)}</p>`).join('');
+  const [intro, ...secs] = s.split(/^## /m);
+  let h = EMPTY.test(intro.trim()) ? '' : paras(intro.trim());
+  for (const sec of secs) {
+    const nl = sec.indexOf('\n'), title = (nl < 0 ? sec : sec.slice(0, nl)).trim(), body = nl < 0 ? '' : sec.slice(nl + 1).trim();
+    if (!EMPTY.test(body)) h += `<h4>${esc(title)}</h4>${paras(body)}`;
+  }
+  return h;
 }
 
 function detail() {
