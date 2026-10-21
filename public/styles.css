@@ -333,7 +333,7 @@ select {
 }
 
 .projects th {
-  padding: 2px 14px 0;
+  padding: 2px 14px;
   text-align: left;
   white-space: nowrap;
   font-size: var(--fs-s);
