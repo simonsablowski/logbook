@@ -8,14 +8,14 @@ Tickets are Markdown files in `tickets/`. `npm run build` validates them and gen
 
 | Prefix | Project | Repository |
 |---|---|---|
-| CRS | courses.simsab.net | `simonsablowski/courses` |
-| RSR | resources.simsab.net | `simonsablowski/resources` |
+| CRS | courses.simsab.net | `simonsablowski/simsab-courses` |
+| RSR | resources.simsab.net | `simonsablowski/simsab-resources` |
 | MTV | motivado.com | `simonsablowski/motivado` |
 | SIM | simsab.net | `simonsablowski/simsab` |
-| IKS | shop.inkarnatoons.com | `simonsablowski/shop` |
+| IKS | shop.inkarnatoons.com | `simonsablowski/inkarnatoons-shop` |
 | DBP | dbp12.simsab.net | `simonsablowski/dbp12` |
 | NOR | norahammer.com | `simonsablowski/norahammer` |
-| NMB | notmybiz.com | `simonsablowski/notmybiz` |
+| NMB | notmybiz.com | `simonsablowski/notmybiz-lp` |
 | BEU | beatemup.simsab.net | `simonsablowski/beatemup` |
 
 The registry lives in `projects.json`. Every project must have a GitHub repository.
@@ -61,8 +61,8 @@ Why it was needed, or "Not documented."
 
 ## Viewing
 
-Open `docs/index.html` through any static server, or enable GitHub Pages for the `main` branch with the `/docs` folder.
+Published at https://logbook.simsab.net through GitHub Pages (branch `main`, folder `/docs`, custom domain set by `docs/CNAME`). Locally, open `docs/index.html` through any static server.
 
 ## Status
 
-All 27 tickets for MTV (motivado.com) are backfilled from the git history of October 2026. The other projects follow.
+The 2026 revival of all nine projects is backfilled from git history: 84 tickets in total, starting with the rebuilds in September and October 2026. Older history is deliberately not covered.
