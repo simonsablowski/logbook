@@ -1,17 +1,19 @@
 import { HttpError } from './tickets.js';
 
-// Ten pastel colours, spread evenly over the hue range, to tint the cards of a project.
+// Ten colours, one for each tenth of the hue wheel, chosen so that the smallest perceptual distance
+// between any two of them (OKLab) is as large as possible within soft, light colours. The colour of
+// a project tints its cards, so none of them is vivid.
 export const COLOURS = [
-  { name: 'Rose', hex: '#FFC5D5' },
-  { name: 'Peach', hex: '#FFCCB7' },
-  { name: 'Apricot', hex: '#FFDDAE' },
-  { name: 'Lemon', hex: '#EBEAAC' },
-  { name: 'Green', hex: '#C1E7B4' },
-  { name: 'Mint', hex: '#9EE9D5' },
-  { name: 'Cyan', hex: '#99E5F9' },
-  { name: 'Blue', hex: '#B8DCFF' },
-  { name: 'Lavender', hex: '#D9D0FF' },
-  { name: 'Orchid', hex: '#F4C6F4' },
+  { name: 'Rose', hex: '#FE93A1' },
+  { name: 'Amber', hex: '#EDA752' },
+  { name: 'Yellow', hex: '#FCDC72' },
+  { name: 'Green', hex: '#93CA73' },
+  { name: 'Mint', hex: '#A3FDB6' },
+  { name: 'Turquoise', hex: '#1ED1CD' },
+  { name: 'Sky', hex: '#9EEDFE' },
+  { name: 'Blue', hex: '#82BCFC' },
+  { name: 'Lilac', hex: '#DDA4F7' },
+  { name: 'Pink', hex: '#FECDEE' },
 ];
 
 // Only the colour of a project can be changed. null removes it.
