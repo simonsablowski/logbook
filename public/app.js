@@ -307,7 +307,7 @@ const editForm = (ticket, creating = false) => `
   </form>`;
 
 const backlogRow = (ticket) => `
-  <button class="row" data-id="${ticket.id}">
+  <button class="row" data-id="${ticket.id}"${tintStyle(ticket)}>
     <span class="id">${ticket.id}</span>
     <span class="row-title">${esc(ticket.title)}</span>
     <span class="meta">${fact(ticket.status, 'Status', STATUS_LABEL[ticket.status])}${effortFact(ticket)}</span>
@@ -357,7 +357,7 @@ const renderProjects = () => {
       </tr>`)
     .join('');
   const add = user ? `<button class="add-card add-project" type="button" data-add-project>${icon('plus')}New project</button>` : '';
-  return `<div class="table-wrap"><table class="projects"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>${add}`;
+  return `<section class="lane"><div class="table-wrap"><table class="projects"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>${add}</section>`;
 };
 
 // Adding and editing a project --------------------------------------
@@ -603,14 +603,18 @@ const renderBacklog = (visible) =>
     .map((priority) => {
       const open = visible.filter((t) => t.priority === priority && t.status !== 'completed').sort(byPriority);
       return `
-      <div class="group heading">${priorityDot(priority)} ${PRIORITY_LABEL[priority]} · ${open.length}</div>
-      ${open.map(backlogRow).join('') || '<div class="note empty">Nothing open</div>'}`;
+      <section class="lane">
+        <div class="group heading">${priorityDot(priority)} ${PRIORITY_LABEL[priority]} · ${open.length}</div>
+        ${open.map(backlogRow).join('') || '<div class="note">Nothing open</div>'}
+      </section>`;
     })
     .join('');
 
 const renderChangelog = (visible) =>
-  visible.filter((t) => t.status === 'completed').sort(byCompletion).map(changelogEntry).join('') ||
-  '<div class="note empty">Nothing completed yet.</div>';
+  `<section class="lane">${
+    visible.filter((t) => t.status === 'completed').sort(byCompletion).map(changelogEntry).join('') ||
+    '<div class="note">Nothing completed yet.</div>'
+  }</section>`;
 
 const RENDERERS = { projects: renderProjects, board: renderBoard, backlog: renderBacklog, changelog: renderChangelog };
 

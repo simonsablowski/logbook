@@ -313,19 +313,39 @@ select:hover,
 
 .projects {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 8px;
 }
 
-.projects th,
-.projects td {
-  padding: 10px 14px 10px 4px;
+.projects th {
+  padding: 0 14px;
   text-align: left;
   white-space: nowrap;
-  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-s);
+  font-weight: 600;
+  color: var(--text2);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .projects td {
   height: 48px;
+  padding: 0 14px;
+  text-align: left;
+  white-space: nowrap;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.projects td:first-child {
+  border-left: 1px solid var(--line);
+  border-radius: 8px 0 0 8px;
+}
+
+.projects td:last-child {
+  border-right: 1px solid var(--line);
+  border-radius: 0 8px 8px 0;
 }
 
 .projects .prefix {
@@ -475,6 +495,20 @@ button.swatch:hover {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
+}
+
+.lane {
+  padding: 10px;
+  background: var(--sunken);
+  border-radius: 10px;
+}
+
+.lane + .lane {
+  margin-top: 12px;
+}
+
+.lane > :last-child {
+  margin-bottom: 0;
 }
 
 .column {
@@ -634,24 +668,21 @@ button.swatch:hover {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin: 20px 0 4px;
+  margin: 2px 4px 10px;
 }
 
 .row {
+  --tint: var(--surface);
   display: flex;
   gap: 12px;
   align-items: center;
   width: 100%;
-  padding: 10px 4px;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--tint) var(--tint-strength), var(--surface));
+  border: 1px solid var(--line);
+  border-radius: 8px;
   text-align: left;
-}
-
-.row:hover {
-  background: var(--surface);
 }
 
 .row .id {
@@ -667,24 +698,17 @@ button.swatch:hover {
 /* Changelog --------------------------------------------------------- */
 
 .entry {
-  --tint: var(--bg);
+  --tint: var(--surface);
   display: grid;
   grid-template-columns: 96px 1fr;
   gap: 14px;
-  /* the tint reaches 12 px beyond the text, which keeps its alignment with the tabs */
-  width: calc(100% + 24px);
-  margin: 0 -12px;
-  padding: 14px 12px;
-  background: color-mix(in srgb, var(--tint) var(--tint-strength), var(--bg));
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--tint) var(--tint-strength), var(--surface));
+  border: 1px solid var(--line);
+  border-radius: 8px;
   text-align: left;
-}
-
-/* A gap in the colour of the page keeps tinted entries apart. */
-.entry[style*="--tint"] {
-  border-bottom: 2px solid var(--bg);
 }
 
 .entry-date {
