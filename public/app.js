@@ -121,7 +121,7 @@ function renderBody(body) {
 
 // View state, kept in the URL hash (#v=changelog&p=MTV&t=MTV-023) ------
 
-const state = { view: 'board', project: '', ticket: '', editing: false, creating: false, projectForm: null };
+const state = { view: 'board', project: '', ticket: '', editing: false, creating: false, creatingPriority: '', projectForm: null };
 
 function readHash() {
   const params = new URLSearchParams(location.hash.slice(1));
@@ -194,7 +194,9 @@ function toggleAccountMenu() {
   $('avatar').setAttribute('aria-expanded', String(open));
 }
 
-function startCreating() {
+// The priority is the one of the Backlog list the row was clicked in; the Board's card starts as a later idea.
+function startCreating(priority = 'later') {
+  state.creatingPriority = priority;
   state.creating = true;
   state.editing = false;
   state.ticket = '';
@@ -295,7 +297,7 @@ const options = (items, selected, none) =>
     .concat(items.map(([value, label]) => `<option value="${value}"${value === selected ? ' selected' : ''}>${esc(label)}</option>`))
     .join('');
 
-const blankTicket = () => ({ project: state.project, title: '', status: 'idea', priority: 'later', effort: null, type: 'feature', body: '## Summary\n\n' });
+const blankTicket = () => ({ project: state.project, title: '', status: 'idea', priority: state.creatingPriority || 'later', effort: null, type: 'feature', body: '## Summary\n\n' });
 
 const editForm = (ticket, creating = false) => `
   <form id="edit-form" class="edit" novalidate>
@@ -646,10 +648,11 @@ const renderBacklog = (visible) =>
   Object.keys(PRIORITY_LABEL)
     .map((priority) => {
       const open = visible.filter((t) => t.priority === priority && t.status !== 'completed').sort(byPriority);
+      const add = user ? `<button class="add-card add-row" type="button" data-priority="${priority}">${icon('plus')}New ticket</button>` : '';
       return `
       <section class="lane">
         <div class="group heading">${priorityDot(priority)} ${PRIORITY_LABEL[priority]} · ${open.length}</div>
-        ${open.map(backlogRow).join('') || '<div class="note">Nothing open</div>'}
+        ${add}${open.map(backlogRow).join('') || (add ? '' : '<div class="note">Nothing open</div>')}
       </section>`;
     })
     .join('');
@@ -1024,7 +1027,8 @@ $('view').addEventListener('click', (event) => {
   if (event.target.closest('[data-add-project]')) return openProjectForm({ mode: 'create' });
   const editButton = event.target.closest('[data-edit-project]');
   if (editButton) return openProjectForm({ mode: 'edit', prefix: editButton.dataset.editProject });
-  if (event.target.closest('.add-card')) return startCreating();
+  const addCard = event.target.closest('.add-card');
+  if (addCard) return startCreating(addCard.dataset.priority);
   const bar = event.target.closest('[data-jump]');
   if (bar) {
     const heading = $('view').querySelector(`[data-week="${bar.dataset.jump}"]`);
