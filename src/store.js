@@ -1,3 +1,4 @@
+import { DEFAULT_SETTINGS } from './settings.js';
 import { HttpError } from './tickets.js';
 
 export const KEY = 'tickets.json';
@@ -66,4 +67,23 @@ export async function mutateProjects(env, change) {
     if (written !== null) return result;
   }
   throw new HttpError(409, 'The projects were changed at the same time. Try again.');
+}
+
+// A bucket without settings.json uses the defaults until somebody changes a setting.
+export async function readSettings(env) {
+  const object = await env.TICKETS.get(SETTINGS_KEY);
+  return object ? object.json() : structuredClone(DEFAULT_SETTINGS);
+}
+
+export async function mutateSettings(env, change) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const object = await env.TICKETS.get(SETTINGS_KEY);
+    const { settings, result } = change(object ? await object.json() : structuredClone(DEFAULT_SETTINGS));
+    const written = await env.TICKETS.put(SETTINGS_KEY, JSON.stringify(settings, null, 2), {
+      httpMetadata: { contentType: 'application/json' },
+      ...(object ? { onlyIf: { etagMatches: object.etag } } : { onlyIf: { etagDoesNotMatch: '*' } }),
+    });
+    if (written !== null) return result;
+  }
+  throw new HttpError(409, 'The settings were changed at the same time. Try again.');
 }

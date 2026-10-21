@@ -2,7 +2,8 @@ import { authenticate } from './auth.js';
 import { backup, listBackups, restoreBackup, verifyBackup } from './backups.js';
 import { syncCommits } from './commits.js';
 import { COLOURS, createProject, patchProject, reorderProjects } from './projects.js';
-import { mutate, mutateProjects, readProjects, readSyncState, readTickets } from './store.js';
+import { patchSettings } from './settings.js';
+import { mutate, mutateProjects, mutateSettings, readProjects, readSettings, readSyncState, readTickets } from './store.js';
 import { HttpError, createTicket, patchTicket } from './tickets.js';
 
 const BACKUP_CRON = '0 3 * * *';
@@ -33,9 +34,9 @@ async function handleApi(request, env, url, auth) {
   const ticketId = pathname.match(/^\/api\/tickets\/([A-Z]{3}-\d+)$/)?.[1];
 
   if (pathname === '/api/data' && method === 'GET') {
-    const [projects, tickets] = await Promise.all([readProjects(env), readTickets(env)]);
+    const [projects, tickets, settings] = await Promise.all([readProjects(env), readTickets(env), readSettings(env)]);
     tickets.sort((a, b) => a.id.localeCompare(b.id));
-    return reply({ projects, colours: COLOURS, tickets, generated: new Date().toISOString(), user: auth.user });
+    return reply({ projects, colours: COLOURS, settings, tickets, generated: new Date().toISOString(), user: auth.user });
   }
 
   // Everything that changes data lives under /api/tickets, the path Cloudflare Access protects.
@@ -75,7 +76,14 @@ async function handleApi(request, env, url, auth) {
     return Response.redirect(new URL(`/${next.startsWith('#') ? next : ''}`, url).href, 302);
   }
 
-  // The commit collection runs every hour; this shows its last result or runs it right away.
+  if (pathname === '/api/tickets/settings' && method === 'PATCH') {
+    const patch = await readJson(request);
+    return reply(await mutateSettings(env, (settings) => {
+      const updated = patchSettings(settings, patch);
+      return { settings: updated, result: updated };
+    }));
+  }
+
   if (pathname === '/api/tickets/backups' && method === 'GET') return reply(await listBackups(env));
   if (pathname === '/api/tickets/backups' && method === 'POST') return reply(await backup(env), 201);
   const backupDay = pathname.match(/^\/api\/tickets\/backups\/([^/]+)\/(verify|restore)$/);
@@ -85,6 +93,7 @@ async function handleApi(request, env, url, auth) {
     return reply(await restoreBackup(env, backupDay[1], confirm));
   }
 
+  // The commit collection runs every hour; this shows its last result or runs it right away.
   if (pathname === '/api/tickets/sync' && method === 'GET') return reply(await readSyncState(env));
   if (pathname === '/api/tickets/sync' && method === 'POST') return reply(await syncCommits(env));
 

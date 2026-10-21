@@ -10,6 +10,7 @@ try {
   throw error;
 }
 const { projects, tickets, colours } = data;
+const wipLimits = data.settings.wipLimits; // status -> limit, counted across all projects; no entry means no limit
 const projectByPrefix = Object.fromEntries(projects.map((p) => [p.prefix, p]));
 const projectOf = (ticket) => projectByPrefix[ticket.project];
 
@@ -22,7 +23,6 @@ const COLUMNS = [
   ['completed', 'Completed'],
 ];
 const STATUS_LABEL = Object.fromEntries(COLUMNS);
-const WIP_LIMITS = { planned: 6, 'in-progress': 2 };
 const PRIORITY_LABEL = { now: 'Now', next: 'Next', later: 'Later' };
 const PRIORITY_RANK = { now: 0, next: 1, later: 2 };
 const EFFORT_LABEL = { S: 'Small', M: 'Medium', L: 'Large' };
@@ -525,6 +525,41 @@ function moveProjectByOne(prefix, step) {
   $('view').querySelector(`[data-grip="${prefix}"]`)?.focus();
 }
 
+// The box under the counter of a Board column, to set, change or remove its WIP limit.
+let limitFor = ''; // status whose limit is being edited
+
+function closeLimitBox() {
+  limitFor = '';
+  $('limitbox').hidden = true;
+}
+
+function openLimitBox(button) {
+  limitFor = button.dataset.limitFor;
+  const limit = wipLimits[limitFor];
+  const total = tickets.filter((t) => t.status === limitFor).length;
+  $('limitbox').innerHTML = `<form>
+    <label class="palette-title" for="limit-input">WIP limit of ${esc(STATUS_LABEL[limitFor])}</label>
+    <div class="limit-row">
+      <input id="limit-input" type="number" min="1" max="99" step="1" value="${limit || Math.max(total, 1)}" inputmode="numeric">
+      ${limit ? '<button type="button" class="link" data-remove-limit>Remove limit</button>' : '<button type="submit" class="primary">Set limit</button>'}
+    </div>
+  </form>`;
+  const box = button.getBoundingClientRect();
+  $('limitbox').style.top = `${box.bottom + 8}px`;
+  $('limitbox').style.left = `${Math.max(8, Math.min(box.right - 220, innerWidth - 236))}px`;
+  $('limitbox').hidden = false;
+  $('limit-input').focus();
+  $('limit-input').select();
+}
+
+async function setLimit(status, limit) {
+  const { error, result } = await send('PATCH', 'api/tickets/settings', { wipLimits: { [status]: limit } });
+  if (error) return toast(error);
+  for (const key of Object.keys(wipLimits)) delete wipLimits[key];
+  Object.assign(wipLimits, result.wipLimits);
+  render();
+}
+
 let paletteFor = ''; // prefix of the project whose colour is being chosen
 
 function closePalette() {
@@ -559,13 +594,16 @@ async function setProjectColour(prefix, hex) {
 // Views --------------------------------------------------------------
 
 function renderColumn([status, label], visible) {
-  const limit = WIP_LIMITS[status];
+  const limit = wipLimits[status];
   const total = tickets.filter((t) => t.status === status).length;
   const items = status === 'completed' ? visible.sort(byCompletion) : visible.sort(byPriority);
   const limitClass = limit && total > limit ? ' over-limit' : limit && total === limit ? ' at-limit' : '';
-  const count = limit
-    ? `<span class="limit" title="WIP limit ${limit}, counted across all projects">${total} / ${limit}</span>`
-    : `<span>${items.length}</span>`;
+  const shown = limit ? `${total} / ${limit}` : String(items.length);
+  const title = limit ? `WIP limit ${limit}, counted across all projects` : 'No WIP limit';
+  // Signed-in users change the limit through the counter; visitors see it as plain text.
+  const count = user
+    ? `<button class="counter${limit ? ' limit' : ''}" type="button" data-limit-for="${status}" title="${title}. Change the limit." aria-haspopup="dialog">${shown}</button>`
+    : `<span${limit ? ' class="limit"' : ''} title="${title}">${shown}</span>`;
   const overflowView = status === 'completed' ? 'changelog' : 'backlog';
   // New tickets start as ideas, so a placeholder card to create one sits at the top of the Idea column.
   const add = status === 'idea' && user ? `<button class="add-card" type="button">${icon('plus')}New ticket</button>` : '';
@@ -900,6 +938,13 @@ $('view').addEventListener('click', (event) => {
   const editButton = event.target.closest('[data-edit-project]');
   if (editButton) return openProjectForm({ mode: 'edit', prefix: editButton.dataset.editProject });
   if (event.target.closest('.add-card')) return startCreating();
+  const counter = event.target.closest('[data-limit-for]');
+  if (counter) {
+    const open = limitFor === counter.dataset.limitFor;
+    closeLimitBox();
+    if (!open) openLimitBox(counter);
+    return;
+  }
   const picker = event.target.closest('[data-pick]');
   if (picker) {
     const open = paletteFor === picker.dataset.pick;
@@ -907,11 +952,29 @@ $('view').addEventListener('click', (event) => {
     if (!open) openPalette(picker);
   }
 });
+$('limitbox').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const value = Number($('limit-input').value);
+  if (!Number.isInteger(value) || value < 1 || value > 99) return toast('Enter a whole number from 1 to 99.');
+  setLimit(limitFor, value).then(() => $('limitbox').hidden || openLimitBox($('view').querySelector(`[data-limit-for="${limitFor}"]`)));
+});
+// A limit that is already set changes as soon as the number does.
+$('limitbox').addEventListener('change', (event) => {
+  const value = Number(event.target.value);
+  if (wipLimits[limitFor] && Number.isInteger(value) && value >= 1 && value <= 99 && value !== wipLimits[limitFor]) setLimit(limitFor, value);
+});
+$('limitbox').addEventListener('click', (event) => {
+  if (!event.target.closest('[data-remove-limit]')) return;
+  const status = limitFor;
+  closeLimitBox();
+  setLimit(status, null);
+});
 $('palette').addEventListener('click', (event) => {
   const choice = event.target.closest('[data-colour]');
   if (choice) setProjectColour(paletteFor, choice.dataset.colour);
 });
 document.addEventListener('click', (event) => !event.target.closest('#palette, [data-pick]') && closePalette());
+document.addEventListener('click', (event) => !event.target.closest('#limitbox, [data-limit-for]') && closeLimitBox());
 $('avatar').onclick = toggleAccountMenu;
 $('signout').onclick = () => {
   rememberEditor(false);
@@ -921,7 +984,8 @@ document.addEventListener('click', (event) => !event.target.closest('#account') 
 $('backdrop').onclick = () => !state.editing && !state.creating && !state.projectForm && closeDetail();
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
-  if (!$('palette').hidden) closePalette();
+  if (!$('limitbox').hidden) closeLimitBox();
+  else if (!$('palette').hidden) closePalette();
   else if (!$('account-menu').hidden) closeAccountMenu();
   else cancelOrClose();
 });

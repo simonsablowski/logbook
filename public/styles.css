@@ -493,6 +493,50 @@ button.swatch:hover {
   color: var(--text2);
 }
 
+.limitbox {
+  position: fixed;
+  right: auto;
+  width: 220px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.limit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.limitbox input {
+  width: 72px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.limitbox input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.limitbox .limit-row button {
+  display: inline-block;
+  width: auto;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.limitbox .primary,
+.limitbox .primary:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
 .swatches {
   display: grid;
   grid-template-columns: repeat(6, 28px);
@@ -565,6 +609,19 @@ button.swatch:hover {
 .limit {
   padding: 0 8px;
   border-radius: 10px;
+  font-weight: 600;
+}
+
+/* The counter is a button for signed-in users, but looks like the plain counter until it is hovered. */
+.counter {
+  padding: 0 8px;
+  background: none;
+  border-color: transparent;
+  border-radius: 10px;
+  font-weight: inherit;
+}
+
+.counter.limit {
   font-weight: 600;
 }
 
