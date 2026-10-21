@@ -18,7 +18,21 @@ export function nextId(tickets, project) {
   return `${project}-${String(Math.max(0, ...numbers) + 1).padStart(3, '0')}`;
 }
 
+// List bullets are written with "-", never "*" or "+", so that every ticket looks the same.
+// Lines inside fenced code blocks stay untouched.
+export function normalizeBody(body) {
+  let fenced = false;
+  return body
+    .split('\n')
+    .map((line) => {
+      if (/^\s*```/.test(line)) fenced = !fenced;
+      return fenced ? line : line.replace(/^(\s*)[*+](\s+)/, '$1-$2');
+    })
+    .join('\n');
+}
+
 function check(ticket, prefixes) {
+  if (typeof ticket.body === 'string') ticket.body = normalizeBody(ticket.body);
   const errors = validateTicket(ticket, prefixes);
   if (errors.length) throw new HttpError(400, errors.join('; '));
   return ticket;

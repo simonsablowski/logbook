@@ -57,8 +57,46 @@ const byCompletion = (a, b) => b.completed.localeCompare(a.completed) || b.id.lo
 
 const summaryOf = (ticket) => (ticket.body.split('## Summary')[1] || '').split('##')[0].trim();
 
-// Markdown subset: "## Heading" sections and paragraphs. Empty and placeholder sections are skipped.
-const paragraphs = (text) => text.split(/\n{2,}/).map((p) => `<p>${esc(p.trim())}</p>`).join('');
+// Markdown subset: "## Heading" sections, paragraphs and lists ("- item", "1. item"; "*" and "+" are
+// shown as bullets too). Empty and placeholder sections are skipped.
+const LIST_ITEM = /^\s*([-*+]|\d+\.)\s+(.*)$/;
+
+function paragraphs(text) {
+  const html = [];
+  let paragraph = [];
+  let list = null; // { tag, items }
+
+  const flushParagraph = () => {
+    if (paragraph.length) html.push(`<p>${paragraph.map(esc).join(' ')}</p>`);
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (list) html.push(`<${list.tag} class="list">${list.items.map((item) => `<li>${esc(item)}</li>`).join('')}</${list.tag}>`);
+    list = null;
+  };
+
+  for (const line of text.split('\n')) {
+    const item = line.match(LIST_ITEM);
+    if (!line.trim()) {
+      flushParagraph();
+      flushList();
+    } else if (item) {
+      flushParagraph();
+      const tag = /\d/.test(item[1]) ? 'ol' : 'ul';
+      if (list && list.tag !== tag) flushList();
+      list ??= { tag, items: [] };
+      list.items.push(item[2]);
+    } else if (list && /^\s/.test(line)) {
+      list.items[list.items.length - 1] += ` ${line.trim()}`;
+    } else {
+      flushList();
+      paragraph.push(line.trim());
+    }
+  }
+  flushParagraph();
+  flushList();
+  return html.join('');
+}
 
 function renderBody(body) {
   const [intro, ...sections] = body.split(/^## /m);
@@ -74,7 +112,7 @@ function renderBody(body) {
 
 // View state, kept in the URL hash (#v=changelog&p=MTV&t=MTV-023) ------
 
-const state = { view: 'board', project: '', ticket: '', editing: false };
+const state = { view: 'board', project: '', ticket: '', editing: false, creating: false };
 
 function readHash() {
   const params = new URLSearchParams(location.hash.slice(1));
@@ -124,6 +162,7 @@ function updateSessionBar() {
   $('who').hidden = !user;
   $('who').textContent = user;
   $('signin').hidden = Boolean(user);
+  $('new-ticket').hidden = !user;
 }
 
 function toast(message) {
@@ -134,29 +173,44 @@ function toast(message) {
   toast.timer = setTimeout(() => { el.hidden = true; }, 5000);
 }
 
-// Sends a change to the API and applies the stored result. Returns an error message, or '' on success.
-async function saveTicket(id, patch) {
+// Sends a change to the API. Resolves to { result } on success or { error } with a message to show.
+async function send(method, path, body) {
   let response;
   try {
-    response = await fetch(`api/tickets/${id}`, {
-      method: 'PATCH',
+    response = await fetch(path, {
+      method,
       redirect: 'manual',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(patch),
+      body: JSON.stringify(body),
     });
   } catch {
-    return 'Could not reach the server.';
+    return { error: 'Could not reach the server.' };
   }
   if (response.type === 'opaqueredirect' || response.status === 401) {
     user = '';
     rememberEditor(false);
     updateSessionBar();
-    return 'Your session has expired. Sign in again to save.';
+    return { error: 'Your session has expired. Sign in again to save.' };
   }
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) return result.error || `Saving failed (${response.status})`;
+  if (!response.ok) return { error: result.error || `Saving failed (${response.status})` };
+  return { result };
+}
+
+// Applies a change to a ticket. Returns an error message, or '' on success.
+async function saveTicket(id, patch) {
+  const { error, result } = await send('PATCH', `api/tickets/${id}`, patch);
+  if (error) return error;
   Object.assign(tickets.find((t) => t.id === id), result);
   return '';
+}
+
+// Creates a ticket. Resolves to { ticket } or { error }.
+async function createTicket(input) {
+  const { error, result } = await send('POST', 'api/tickets', input);
+  if (error) return { error };
+  tickets.push(result);
+  return { ticket: result };
 }
 
 async function moveTicket(id, status) {
@@ -201,9 +255,12 @@ const options = (items, selected, none) =>
     .concat(items.map(([value, label]) => `<option value="${value}"${value === selected ? ' selected' : ''}>${esc(label)}</option>`))
     .join('');
 
-const editForm = (ticket) => `
+const blankTicket = () => ({ project: state.project, title: '', status: 'idea', priority: 'later', effort: null, type: 'feature', body: '## Summary\n\n' });
+
+const editForm = (ticket, creating = false) => `
   <form id="edit-form" class="edit" novalidate>
-    <label>Title<input name="title" value="${esc(ticket.title)}"></label>
+    ${creating ? `<label>Project<select name="project">${options(projects.map((p) => [p.prefix, `${p.prefix} · ${p.name}`]), ticket.project, 'Choose a project')}</select></label>` : ''}
+    <label>Title<input name="title" value="${esc(ticket.title)}" placeholder="Add footer newsletter form"></label>
     <div class="edit-row">
       <label>Status<select name="status">${options(COLUMNS, ticket.status)}</select></label>
       <label>Priority<select name="priority">${options(Object.entries(PRIORITY_LABEL), ticket.priority, 'None')}</select></label>
@@ -212,7 +269,7 @@ const editForm = (ticket) => `
     </div>
     <label>Text (Markdown, sections start with ##)<textarea name="body" rows="14">${esc(ticket.body)}</textarea></label>
     <p id="edit-error" class="edit-error" role="alert" hidden></p>
-    <div class="edit-actions"><button type="submit" class="primary">Save</button><button type="button" id="cancel-edit">Cancel</button></div>
+    <div class="edit-actions"><button type="submit" class="primary">${creating ? 'Create' : 'Save'}</button><button type="button" id="cancel-edit">Cancel</button></div>
   </form>`;
 
 const backlogRow = (ticket) => `
@@ -296,7 +353,8 @@ const RENDERERS = { board: renderBoard, backlog: renderBacklog, changelog: rende
 // Detail drawer ------------------------------------------------------
 
 function renderDetail() {
-  const ticket = tickets.find((t) => t.id === state.ticket);
+  const creating = state.creating && Boolean(user);
+  const ticket = creating ? blankTicket() : tickets.find((t) => t.id === state.ticket);
   $('detail').classList.toggle('open', Boolean(ticket));
   $('backdrop').classList.toggle('open', Boolean(ticket));
   if (!ticket) return;
@@ -309,23 +367,26 @@ function renderDetail() {
     priorityFact(ticket.priority),
   ].join('');
 
-  const repo = projectOf(ticket).repo;
-  const commits = ticket.commits
+  const repo = creating ? '' : projectOf(ticket).repo;
+  const commits = (ticket.commits || [])
     .map((c) => `<li><a class="sha" href="https://github.com/${esc(repo)}/commit/${esc(c.sha)}" target="_blank" rel="noopener">${esc(c.sha)}</a><span>${esc(c.subject)}</span></li>`)
     .join('');
 
-  const editing = state.editing && Boolean(user);
+  const editing = creating || (state.editing && Boolean(user));
+  const heading = creating
+    ? '<div class="id">New ticket</div><h2>Create a ticket</h2>'
+    : `<div class="id">${ticket.id}</div><h2>${esc(ticket.title)}</h2>`;
   $('detail').innerHTML = `
   <div class="panel">
     <div class="panel-top">
-      <div><div class="id">${ticket.id}</div><h2>${esc(ticket.title)}</h2></div>
+      <div>${heading}</div>
       <div class="panel-actions">
         ${user && !editing ? '<button id="edit">Edit</button>' : ''}
-        <button id="close" aria-label="Close ticket">Close</button>
+        <button id="close" aria-label="Close">Close</button>
       </div>
     </div>
     ${editing
-      ? editForm(ticket)
+      ? editForm(ticket, creating)
       : `<div class="facts">${facts}</div>
     ${renderBody(ticket.body)}
     ${commits ? `<h4 class="heading">Commits</h4><ul class="commits">${commits}</ul>` : ''}`}
@@ -338,22 +399,23 @@ function renderDetail() {
       $('edit-form').querySelector('[name=title]').focus();
     };
   }
-  if (editing) bindEditForm(ticket);
+  if (editing) bindEditForm(ticket, creating);
 }
 
-function bindEditForm(ticket) {
+function bindEditForm(ticket, creating) {
   const showError = (message) => {
     $('edit-error').textContent = message;
     $('edit-error').hidden = false;
   };
   $('cancel-edit').onclick = () => {
     state.editing = false;
+    state.creating = false;
     render();
   };
   $('edit-form').onsubmit = async (event) => {
     event.preventDefault();
     const form = new FormData(event.target);
-    const patch = {
+    const fields = {
       title: form.get('title').trim(),
       status: form.get('status'),
       priority: form.get('priority') || null,
@@ -361,25 +423,31 @@ function bindEditForm(ticket) {
       type: form.get('type'),
       body: form.get('body').replace(/\r\n/g, '\n').trim(),
     };
-    if (!patch.title) return showError('Enter a title.');
-    if (patch.status !== 'completed' && !patch.priority) return showError('Choose a priority for tickets that are not completed.');
+    if (creating && !form.get('project')) return showError('Choose a project.');
+    if (!fields.title) return showError('Enter a title.');
+    if (fields.status !== 'completed' && !fields.priority) return showError('Choose a priority for tickets that are not completed.');
 
     const submit = event.target.querySelector('[type=submit]');
     submit.disabled = true;
-    const error = await saveTicket(ticket.id, patch);
-    if (error) {
+    const outcome = creating
+      ? await createTicket({ project: form.get('project'), ...fields })
+      : { error: await saveTicket(ticket.id, fields) };
+    if (outcome.error) {
       submit.disabled = false;
-      return showError(error);
+      return showError(outcome.error);
     }
+    if (creating) state.ticket = outcome.ticket.id;
     state.editing = false;
+    state.creating = false;
     render();
   };
 }
 
 function closeDetail() {
-  if (!state.ticket) return;
+  if (!state.ticket && !state.creating) return;
   state.ticket = '';
   state.editing = false;
+  state.creating = false;
   render();
 }
 
@@ -397,6 +465,7 @@ function render() {
     const open = () => {
       state.ticket = el.dataset.id;
       state.editing = false;
+      state.creating = false;
       render();
       $('close').focus();
     };
@@ -496,7 +565,14 @@ $('signin').onclick = () => {
   rememberEditor(true);
   location.href = `api/tickets/login?next=${encodeURIComponent(location.hash)}`;
 };
-$('backdrop').onclick = () => !state.editing && closeDetail();
+$('new-ticket').onclick = () => {
+  state.creating = true;
+  state.editing = false;
+  state.ticket = '';
+  render();
+  $('edit-form').querySelector('[name=project]').focus();
+};
+$('backdrop').onclick = () => !state.editing && !state.creating && closeDetail();
 document.addEventListener('keydown', (event) => event.key === 'Escape' && cancelOrClose());
 window.addEventListener('resize', () => state.view === 'board' && requestAnimationFrame(fitBoard));
 render();

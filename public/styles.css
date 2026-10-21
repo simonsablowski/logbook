@@ -546,8 +546,17 @@ select:hover,
   margin: 20px 0 6px;
 }
 
-.panel p + p {
-  margin-top: 8px;
+.panel p,
+.panel .list {
+  margin: 0 0 8px;
+}
+
+.list {
+  padding-left: 20px;
+}
+
+.list li {
+  margin: 2px 0;
 }
 
 .facts {

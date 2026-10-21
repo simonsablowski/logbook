@@ -50,6 +50,8 @@ To switch, change both: the variable (then `npm run deploy`) and the destination
 
 Fields: `id` (`<PREFIX>-<number>`), `project`, `title`, `type` (feature, change, content, bug, chore, docs, idea), `status` (idea, planned, in-progress, completed), `priority` (now, next, later; not needed once completed), `effort` (S, M, L), `created`, `completed`, `body` (Markdown with `## Summary` and optional `## Motivation`), `commits` (list of `{ sha, subject }`), `origin`, `verified`.
 
+Ticket text is Markdown: `## Section` headings, paragraphs, bullet lists and numbered lists, for example a `## Acceptance criteria` section. Write bullets with `-`; bullets written with `*` or `+` are converted to `-` when a ticket is saved.
+
 The server assigns `id`, `created` and `origin` and stamps `completed` when a ticket becomes completed. Empty sections and fields are hidden in the viewer.
 
 ## Command line client
