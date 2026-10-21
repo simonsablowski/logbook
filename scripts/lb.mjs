@@ -6,6 +6,10 @@
 //   node scripts/lb.mjs add --project MTV --title "..." --type feature [--status planned] [--priority next] [--effort S] [--body "..."]
 //   node scripts/lb.mjs set MTV-014 status=in-progress priority=now
 //   node scripts/lb.mjs rm MTV-014
+//   node scripts/lb.mjs backups                          list the days that have a backup
+//   node scripts/lb.mjs backup                           create today's backup now
+//   node scripts/lb.mjs verify 2026-10-22                restore into a temporary place and compare with the live data
+//   node scripts/lb.mjs restore 2026-10-22 --confirm 2026-10-22   replace the live data with the backup
 //
 // Environment:
 //   LOGBOOK_URL              defaults to the workers.dev address of the Worker
@@ -76,6 +80,25 @@ if (command === 'list') {
     return [key, text === 'null' ? null : text === 'true' ? true : text === 'false' ? false : text];
   }));
   console.log(line(await api('PATCH', `/api/tickets/${id}`, patch)));
+} else if (command === 'backups') {
+  (await api('GET', '/api/tickets/backups')).forEach((b) => console.log(`${b.day}  ${b.documents.join(', ')}`));
+} else if (command === 'backup') {
+  const made = await api('POST', '/api/tickets/backups');
+  console.log(`Backed up ${made.documents.join(', ')} as ${made.day}`);
+} else if (command === 'verify') {
+  if (!args[0]) fail('Usage: verify DAY');
+  const report = await api('POST', `/api/tickets/backups/${args[0]}/verify`);
+  for (const [name, d] of Object.entries(report.documents)) {
+    const diff = d.backedUp === undefined ? '' : `  backup ${d.backedUp}, live ${d.live}, only in backup ${d.onlyInBackup.length}, only live ${d.onlyLive.length}, changed ${d.changed.length}`;
+    console.log(`${name.padEnd(9)} restored ${d.restoredEqualsBackup ? 'identical to the backup' : 'DIFFERENT FROM THE BACKUP'}${diff}`);
+  }
+  if (!report.ok) process.exit(1);
+} else if (command === 'restore') {
+  const [day, flag, confirm] = args;
+  if (!day) fail('Usage: restore DAY --confirm DAY   (replaces the live data)');
+  const body = { confirm: flag === '--confirm' ? confirm : undefined };
+  const done = await api('POST', `/api/tickets/backups/${day}/restore`, body);
+  console.log(`Restored ${done.restored.join(', ')} from ${done.day}. The data before is kept in ${done.safetyCopy}`);
 } else if (command === 'rm') {
   await api('DELETE', `/api/tickets/${args[0]}`);
   console.log(`Removed ${args[0]}`);

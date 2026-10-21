@@ -12,13 +12,13 @@ The list of projects is stored in the bucket as `projects.json`, like the ticket
 
 ```text
 public/    viewer (HTML, CSS, JavaScript), served by the Worker
-src/       Worker: Access check, ticket API, R2 storage, nightly backup
+src/       Worker: Access check, ticket API, R2 storage, nightly backup and restore
 scripts/   lb.mjs (command line client), commit-msg (Git hook)
 docs/      redirect page for logbook.simsab.net (GitHub Pages)
 test/      unit tests (npm test)
 ```
 
-- **Storage:** two JSON documents in the R2 bucket `logbook-tickets`: `tickets.json` and `projects.json`. Writes are conditional on the document's ETag, so concurrent changes cannot overwrite each other. A scheduled run copies both documents to `backups/` every night (`<date>.json` and `<date>.projects.json`) and keeps the last 30 of each.
+- **Storage:** two JSON documents in the R2 bucket `logbook-tickets`: `tickets.json` and `projects.json`. Writes are conditional on the document's ETag, so concurrent changes cannot overwrite each other. A scheduled run copies the documents to `backups/` every night (`<date>.json`, `<date>.projects.json` and, once it exists, `<date>.settings.json`) and keeps the last 30 of each. See Backups below for restoring.
 - **Commits:** every hour the Worker reads the new commits of all project repositories through the GitHub API and attaches each commit whose message starts with a ticket ID (`MTV-014: ...`) to that ticket. Only IDs with the prefix of the repository's project count, known commits are skipped. A newly attached commit moves a ticket in Idea or Planned to In progress, even when the WIP limit is exceeded; tickets in In progress or Completed keep their status, and no ticket is ever completed by itself. The repositories are public, so no login is needed; if GitHub starts refusing requests because of its rate limit, store a token without any permissions with `npx wrangler secret put GITHUB_TOKEN`. `POST /api/tickets/sync` runs the collection right away and `GET /api/tickets/sync` shows the result of the last run (both need Access).
 - **Access:** every request except a public read must carry a valid Cloudflare Access token for the configured team domain and audience (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` in `wrangler.jsonc`). Without that configuration the Worker refuses such requests with 503. Browsers sign in through Access; command line clients use an Access service token. See [Access mode](#access-mode).
 - **Address:** https://logbook.empty-shape-d969.workers.dev. The DNS of simsab.net is not on Cloudflare, so `logbook.simsab.net` is a GitHub Pages site that redirects there.
@@ -54,6 +54,23 @@ node scripts/lb.mjs rm MTV-014
 ```
 
 `LOGBOOK_URL` overrides the address. Creating or changing a ticket never creates a commit.
+
+## Backups
+
+All commands need the Access service token, like the rest of the command line client.
+
+```bash
+node scripts/lb.mjs backups                                   # days that have a backup
+node scripts/lb.mjs backup                                    # create today's backup now
+node scripts/lb.mjs verify 2026-10-22                         # restore into a temporary place and compare
+node scripts/lb.mjs restore 2026-10-22 --confirm 2026-10-22   # replace the live data
+```
+
+1. Run `backups` and choose a day.
+2. Run `verify DAY`. It restores the backup into a temporary place in the bucket (`restore-check/`), reads it back, checks that it is identical to the backup, lists how many tickets and projects differ from the live data (only in the backup, only live, changed), and removes the temporary copy. Nothing live is touched. Run it now and then to prove that the backups can be restored.
+3. Run `restore DAY --confirm DAY` to replace the live documents. Without the day repeated as confirmation the command refuses. Before it overwrites anything it copies the live documents to `safety/<time>/`, so a wrong restore can be undone by copying them back in the Cloudflare dashboard.
+
+The same operations are available as `GET|POST /api/tickets/backups`, `POST /api/tickets/backups/:day/verify` and `POST /api/tickets/backups/:day/restore` with `{ "confirm": "<day>" }`.
 
 ## Conventions
 

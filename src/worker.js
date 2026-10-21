@@ -1,7 +1,8 @@
 import { authenticate } from './auth.js';
+import { backup, listBackups, restoreBackup, verifyBackup } from './backups.js';
 import { syncCommits } from './commits.js';
 import { COLOURS, createProject, patchProject, reorderProjects } from './projects.js';
-import { backup, mutate, mutateProjects, readProjects, readSyncState, readTickets } from './store.js';
+import { mutate, mutateProjects, readProjects, readSyncState, readTickets } from './store.js';
 import { HttpError, createTicket, patchTicket } from './tickets.js';
 
 const BACKUP_CRON = '0 3 * * *';
@@ -75,6 +76,15 @@ async function handleApi(request, env, url, auth) {
   }
 
   // The commit collection runs every hour; this shows its last result or runs it right away.
+  if (pathname === '/api/tickets/backups' && method === 'GET') return reply(await listBackups(env));
+  if (pathname === '/api/tickets/backups' && method === 'POST') return reply(await backup(env), 201);
+  const backupDay = pathname.match(/^\/api\/tickets\/backups\/([^/]+)\/(verify|restore)$/);
+  if (backupDay && backupDay[2] === 'verify' && method === 'POST') return reply(await verifyBackup(env, backupDay[1]));
+  if (backupDay && backupDay[2] === 'restore' && method === 'POST') {
+    const { confirm } = await readJson(request);
+    return reply(await restoreBackup(env, backupDay[1], confirm));
+  }
+
   if (pathname === '/api/tickets/sync' && method === 'GET') return reply(await readSyncState(env));
   if (pathname === '/api/tickets/sync' && method === 'POST') return reply(await syncCommits(env));
 
