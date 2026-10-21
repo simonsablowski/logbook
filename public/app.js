@@ -13,7 +13,8 @@ const { projects, tickets, colours } = data;
 const projectByPrefix = Object.fromEntries(projects.map((p) => [p.prefix, p]));
 const projectOf = (ticket) => projectByPrefix[ticket.project];
 
-const VIEWS = ['projects', 'board', 'backlog', 'changelog'];
+// The order of the tabs, which is also the order of the arrow keys. The Board is still the first view shown.
+const VIEWS = ['projects', 'backlog', 'board', 'changelog'];
 const COLUMNS = [
   ['idea', 'Idea'],
   ['planned', 'Planned'],
