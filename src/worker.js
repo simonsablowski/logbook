@@ -3,7 +3,7 @@ import { backup, listBackups, restoreBackup, verifyBackup } from './backups.js';
 import { syncCommits } from './commits.js';
 import { COLOURS, createProject, patchProject, reorderProjects } from './projects.js';
 import { patchSettings } from './settings.js';
-import { mutate, mutateProjects, mutateSettings, readProjects, readSettings, readSyncState, readTickets } from './store.js';
+import { mutate, mutateProjects, mutateSettings, readProjects, readSettings, readSyncState, readTickets, readVersion } from './store.js';
 import { HttpError, createTicket, patchTicket } from './tickets.js';
 
 const BACKUP_CRON = '0 3 * * *';
@@ -34,9 +34,9 @@ async function handleApi(request, env, url, auth) {
   const ticketId = pathname.match(/^\/api\/tickets\/([A-Z]{3}-\d+)$/)?.[1];
 
   if (pathname === '/api/data' && method === 'GET') {
-    const [projects, tickets, settings] = await Promise.all([readProjects(env), readTickets(env), readSettings(env)]);
+    const [projects, tickets, settings, version] = await Promise.all([readProjects(env), readTickets(env), readSettings(env), readVersion(env)]);
     tickets.sort((a, b) => a.id.localeCompare(b.id));
-    return reply({ projects, colours: COLOURS, settings, tickets, generated: new Date().toISOString(), user: auth.user });
+    return reply({ projects, colours: COLOURS, settings, version, tickets, generated: new Date().toISOString(), user: auth.user });
   }
 
   // Everything that changes data lives under /api/tickets, the path Cloudflare Access protects.
@@ -69,6 +69,8 @@ async function handleApi(request, env, url, auth) {
 
   // The viewer asks who is signed in to decide whether to offer editing.
   if (pathname === '/api/tickets/session' && method === 'GET') return reply({ user: auth.user });
+
+  if (pathname === '/api/version' && method === 'GET') return reply({ version: await readVersion(env) });
 
   // Opening this address makes Access ask for a sign-in, then returns to the viewer.
   if (pathname === '/api/tickets/login' && method === 'GET') {

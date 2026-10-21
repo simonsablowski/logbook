@@ -990,3 +990,17 @@ button.swatch:hover {
     transition: none;
   }
 }
+
+/* A card, row or entry that changed in the background lights up briefly. */
+@keyframes flash {
+  from { box-shadow: 0 0 0 3px var(--accent); }
+  to { box-shadow: 0 0 0 3px transparent; }
+}
+
+.flash {
+  animation: flash 1.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash { animation: none; }
+}

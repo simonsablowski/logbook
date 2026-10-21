@@ -87,3 +87,10 @@ export async function mutateSettings(env, change) {
   }
   throw new HttpError(409, 'The settings were changed at the same time. Try again.');
 }
+
+// Changes whenever one of the documents is written: the ETags of the documents, joined. Viewers ask for it
+// to find out whether they need to load the data again.
+export async function readVersion(env) {
+  const heads = await Promise.all([KEY, PROJECTS_KEY, SETTINGS_KEY].map((key) => env.TICKETS.head(key)));
+  return heads.map((head) => head?.etag ?? '-').join('.');
+}

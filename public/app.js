@@ -12,6 +12,7 @@ try {
 const { projects, tickets, colours } = data;
 const wipLimits = data.settings.wipLimits; // status -> limit, counted across all projects; no entry means no limit
 const projectByPrefix = Object.fromEntries(projects.map((p) => [p.prefix, p]));
+let dataVersion = data.version; // identifies the stored documents this page shows
 const projectOf = (ticket) => projectByPrefix[ticket.project];
 
 // The order of the tabs, which is also the order of the arrow keys. The Board is still the first view shown.
@@ -761,6 +762,62 @@ function closeDetail() {
   state.projectForm = null;
   render();
 }
+
+// Refreshing ---------------------------------------------------------
+
+// Asks every few seconds whether the stored documents changed, and shows the changes without a reload.
+// Nothing is asked while the page is hidden; the page catches up as soon as it is visible again.
+const REFRESH_MS = 10000;
+
+// A refresh waits while the user is in the middle of something, and happens at the next check.
+const busy = () =>
+  state.editing || state.creating || state.projectForm || !$('limitbox').hidden || document.querySelector('.dragging');
+
+async function refresh() {
+  if (document.hidden || busy()) return;
+  try {
+    const { version } = await (await fetch('api/version', { cache: 'no-store' })).json();
+    if (!version || version === dataVersion || busy()) return;
+    const fresh = await (await fetch('api/data', { cache: 'no-store' })).json();
+    if (busy()) return;
+    applyData(fresh);
+  } catch {}
+}
+
+function applyData(fresh) {
+  dataVersion = fresh.version;
+  const known = new Map(tickets.map((t) => [t.id, JSON.stringify(t)]));
+  const changed = fresh.tickets.filter((t) => known.get(t.id) !== JSON.stringify(t)).map((t) => t.id);
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const projectsChanged = !same(projects, fresh.projects);
+  const limitsChanged = !same(wipLimits, fresh.settings.wipLimits);
+  const removed = tickets.some((t) => !fresh.tickets.some((f) => f.id === t.id));
+  if (!changed.length && !removed && !projectsChanged && !limitsChanged) return;
+
+  tickets.splice(0, tickets.length, ...fresh.tickets);
+  projects.splice(0, projects.length, ...fresh.projects);
+  for (const key of Object.keys(projectByPrefix)) delete projectByPrefix[key];
+  for (const p of projects) projectByPrefix[p.prefix] = p;
+  for (const key of Object.keys(wipLimits)) delete wipLimits[key];
+  Object.assign(wipLimits, fresh.settings.wipLimits);
+  if (state.project && !projectByPrefix[state.project]) state.project = '';
+  if (state.ticket && !tickets.some((t) => t.id === state.ticket)) state.ticket = '';
+
+  const scroll = [window.scrollY, $('view').scrollTop, $('detail').scrollTop];
+  render();
+  [, $('view').scrollTop, $('detail').scrollTop] = scroll;
+  window.scrollTo(0, scroll[0]);
+  for (const id of changed) {
+    for (const el of document.querySelectorAll(`[data-id="${id}"]`)) {
+      el.classList.remove('flash');
+      void el.offsetWidth;
+      el.classList.add('flash');
+    }
+  }
+}
+
+setInterval(refresh, REFRESH_MS);
+document.addEventListener('visibilitychange', refresh);
 
 // Rendering and events -----------------------------------------------
 
