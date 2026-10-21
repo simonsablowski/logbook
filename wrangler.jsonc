@@ -16,6 +16,7 @@
     "crons": ["0 3 * * *"]
   },
   "vars": {
+    "PUBLIC_READ": "1",
     "ACCESS_TEAM_DOMAIN": "https://simsab.cloudflareaccess.com",
     "ACCESS_AUD": "fb36bc5103c3a759c45469bb76dd5b628d853223774bff2052dbfbbe28623365"
   }

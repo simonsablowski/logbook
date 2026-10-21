@@ -1,5 +1,6 @@
 // Verifies the Cloudflare Access token that Access adds to every request it lets through.
-// The Worker fails closed: without a configured team domain and audience it refuses all requests.
+// The Worker fails closed: without a configured team domain and audience it refuses every request
+// that is not a public read.
 
 const KEYS_TTL_MS = 60 * 60 * 1000;
 let keyCache = { keys: [], fetchedAt: 0 };
@@ -18,8 +19,12 @@ async function signingKeys(teamDomain, refresh) {
 
 const refuse = (status, message) => ({ error: { status, message } });
 
+// With PUBLIC_READ=1 everybody may view the Logbook. Only reading is public; every other method still needs Access.
+export const isPublicRead = (request, env) => env.PUBLIC_READ === '1' && ['GET', 'HEAD'].includes(request.method);
+
 export async function authenticate(request, env) {
   if (env.ACCESS_BYPASS === '1') return { user: 'local development' };
+  if (isPublicRead(request, env)) return { user: 'public' };
 
   const teamDomain = (env.ACCESS_TEAM_DOMAIN || '').replace(/\/$/, '');
   if (!teamDomain || !env.ACCESS_AUD) return refuse(503, 'Cloudflare Access is not configured.');

@@ -32,8 +32,19 @@ test/      unit tests (npm test)
 ```
 
 - **Storage:** one JSON document (`tickets.json`) in the R2 bucket `logbook-tickets`. Writes are conditional on the document's ETag, so concurrent changes cannot overwrite each other. A scheduled run copies the document to `backups/<date>.json` every night and keeps the last 30.
-- **Access:** the Worker accepts a request only if it carries a valid Cloudflare Access token for the configured team domain and audience (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` in `wrangler.jsonc`). Without that configuration it answers every request with 503. Browsers sign in through Access; command line clients use an Access service token.
+- **Access:** every request except a public read must carry a valid Cloudflare Access token for the configured team domain and audience (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` in `wrangler.jsonc`). Without that configuration the Worker refuses such requests with 503. Browsers sign in through Access; command line clients use an Access service token. See [Access mode](#access-mode).
 - **Address:** https://logbook.empty-shape-d969.workers.dev. The DNS of simsab.net is not on Cloudflare, so `logbook.simsab.net` is a GitHub Pages site that redirects there.
+
+## Access mode
+
+`PUBLIC_READ` in `wrangler.jsonc` decides who may view the Logbook. Changing tickets always requires Access.
+
+| `PUBLIC_READ` | Viewing | Cloudflare Access application |
+|---|---|---|
+| `"1"` (public) | everybody | destination limited to the path `api/tickets` |
+| `"0"` (private) | only people allowed by Access | destination is the whole hostname (empty path) |
+
+To switch, change both: the variable (then `npm run deploy`) and the destination of the Access application in Zero Trust. If they do not match, the Worker stays closed rather than open: with `"0"` and a path-limited application, reads have no Access token and are refused.
 
 ## Tickets
 
