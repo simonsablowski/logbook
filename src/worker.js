@@ -1,6 +1,6 @@
 import { authenticate } from './auth.js';
 import { syncCommits } from './commits.js';
-import { COLOURS, patchProject } from './projects.js';
+import { COLOURS, patchProject, reorderProjects } from './projects.js';
 import { backup, mutate, mutateProjects, readProjects, readSyncState, readTickets } from './store.js';
 import { HttpError, createTicket, patchTicket } from './tickets.js';
 
@@ -38,6 +38,14 @@ async function handleApi(request, env, url, auth) {
   }
 
   // Everything that changes data lives under /api/tickets, the path Cloudflare Access protects.
+  if (pathname === '/api/tickets/projects/order' && method === 'PUT') {
+    const { order } = await readJson(request);
+    return reply(await mutateProjects(env, (projects) => {
+      const reordered = reorderProjects(projects, order);
+      return { projects: reordered, result: reordered.map((p) => p.prefix) };
+    }));
+  }
+
   const projectPrefix = pathname.match(/^\/api\/tickets\/projects\/([A-Z]{3})$/)?.[1];
   if (projectPrefix && method === 'PATCH') {
     const patch = await readJson(request);

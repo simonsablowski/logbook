@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { COLOURS, patchProject } from '../src/projects.js';
+import { COLOURS, patchProject, reorderProjects } from '../src/projects.js';
 
 const project = { prefix: 'MTV', name: 'motivado.com', repo: 'simonsablowski/motivado', url: 'https://motivado.com' };
 
@@ -31,4 +31,22 @@ test('patchProject refuses unknown colours and other fields', () => {
   assert.throws(() => patchProject(project, { color: '#123456' }), /color must be/);
   assert.throws(() => patchProject(project, { color: 'red' }), /color must be/);
   assert.throws(() => patchProject(project, { name: 'other' }), /Send the color/);
+});
+
+
+const three = [{ prefix: 'AAA' }, { prefix: 'BBB' }, { prefix: 'CCC' }];
+
+test('reorderProjects returns the projects in the given order', () => {
+  assert.deepEqual(reorderProjects(three, ['CCC', 'AAA', 'BBB']).map((p) => p.prefix), ['CCC', 'AAA', 'BBB']);
+});
+
+test('reorderProjects keeps the other fields of each project', () => {
+  const list = [{ prefix: 'AAA', color: '#FFC5D5' }, { prefix: 'BBB' }];
+  assert.equal(reorderProjects(list, ['BBB', 'AAA'])[1].color, '#FFC5D5');
+});
+
+test('reorderProjects refuses lists that miss, repeat or add a project', () => {
+  for (const order of [['AAA', 'BBB'], ['AAA', 'AAA', 'BBB'], ['AAA', 'BBB', 'CCC', 'DDD'], ['AAA', 'BBB', 'ZZZ'], 'AAA,BBB,CCC', null]) {
+    assert.throws(() => reorderProjects(three, order), /order must list each/);
+  }
 });

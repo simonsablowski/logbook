@@ -340,22 +340,44 @@ select:hover,
   text-decoration: underline;
 }
 
-.sort {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  padding: 0;
-  background: none;
-  border: 0;
-  color: var(--text2);
-  font-size: var(--fs-s);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.grip-cell {
+  width: 32px;
+  padding-right: 0;
 }
 
-.sort:hover {
+.grip {
+  display: inline-flex;
+  padding: 4px;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  cursor: grab;
+}
+
+.grip:hover {
   color: var(--text);
+}
+
+.grip .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.projects tr[draggable="true"] {
+  cursor: grab;
+}
+
+.projects tr.dragging {
+  opacity: 0.5;
+}
+
+/* A line shows where the dragged project will land. */
+.projects tr.drop-before td {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.projects tr.drop-after td {
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .swatch {

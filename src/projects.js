@@ -24,3 +24,16 @@ export function patchProject(project, patch) {
   const { color: previous, ...rest } = project;
   return color === null ? rest : { ...rest, color };
 }
+
+// The order of the projects is the order of the list in the bucket. It is also the order of the
+// project filter. `order` must name every project exactly once.
+export function reorderProjects(projects, order) {
+  const prefixes = projects.map((p) => p.prefix);
+  const valid =
+    Array.isArray(order) &&
+    order.length === prefixes.length &&
+    new Set(order).size === order.length &&
+    order.every((prefix) => prefixes.includes(prefix));
+  if (!valid) throw new HttpError(400, `order must list each of ${prefixes.join(', ')} exactly once`);
+  return order.map((prefix) => projects.find((p) => p.prefix === prefix));
+}

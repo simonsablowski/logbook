@@ -37,8 +37,7 @@ const ICONS = {
   effort: '<path d="M5 20v-6M12 20V9M19 20V4"/>',
   date: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
-  up: '<path d="m6 15 6-6 6 6"/>',
-  down: '<path d="m6 9 6 6 6-6"/>',
+  grip: '<circle cx="9" cy="6" r="1.3" fill="currentColor"/><circle cx="15" cy="6" r="1.3" fill="currentColor"/><circle cx="9" cy="12" r="1.3" fill="currentColor"/><circle cx="15" cy="12" r="1.3" fill="currentColor"/><circle cx="9" cy="18" r="1.3" fill="currentColor"/><circle cx="15" cy="18" r="1.3" fill="currentColor"/>',
 };
 
 // Helpers ------------------------------------------------------------
@@ -323,49 +322,13 @@ const changelogEntry = (ticket) => {
   </button>`;
 };
 
-// Projects: sorting and colours --------------------------------------
-// The sort order of the project list is also the order of the project filter.
+// Projects: order and colours ----------------------------------------
+// The order of the project list is set by drag and drop and stored in the bucket. It is also the
+// order of the project filter.
 
-const PROJECT_COLUMNS = [
-  ['color', 'Colour'],
-  ['prefix', 'Prefix'],
-  ['name', 'Name'],
-  ['url', 'Live site'],
-  ['repo', 'Repository'],
-];
-const SORT_KEY = 'logbook-project-sort';
-
-let sort = { key: 'prefix', dir: 'asc' };
-try {
-  const saved = JSON.parse(localStorage.getItem(SORT_KEY));
-  if (PROJECT_COLUMNS.some(([key]) => key === saved?.key) && ['asc', 'desc'].includes(saved?.dir)) sort = saved;
-} catch {}
+const PROJECT_COLUMNS = ['Colour', 'Prefix', 'Name', 'Live site', 'Repository'];
 
 const colourName = (hex) => colours.find((c) => c.hex === hex)?.name;
-// Colours sort in the order of the palette, projects without a colour last.
-function sortValue(project, key) {
-  if (key !== 'color') return String(project[key] ?? '').toLowerCase();
-  const index = colours.findIndex((c) => c.hex === project.color);
-  return index < 0 ? colours.length : index;
-}
-
-function sortedProjects() {
-  const sign = sort.dir === 'asc' ? 1 : -1;
-  return [...projects].sort((a, b) => {
-    const x = sortValue(a, sort.key);
-    const y = sortValue(b, sort.key);
-    const order = typeof x === 'number' ? x - y : x.localeCompare(y);
-    return sign * order || a.prefix.localeCompare(b.prefix);
-  });
-}
-
-function setSort(key) {
-  sort = { key, dir: sort.key === key && sort.dir === 'asc' ? 'desc' : 'asc' };
-  try {
-    localStorage.setItem(SORT_KEY, JSON.stringify(sort));
-  } catch {}
-  render();
-}
 
 const swatch = (project) => {
   const name = colourName(project.color) || 'No colour';
@@ -376,15 +339,11 @@ const swatch = (project) => {
 };
 
 const renderProjects = () => {
-  const head = PROJECT_COLUMNS.map(([key, label]) => {
-    const active = sort.key === key;
-    const direction = sort.dir === 'asc' ? 'ascending' : 'descending';
-    return `<th scope="col" aria-sort="${active ? direction : 'none'}">
-      <button class="sort" type="button" data-sort="${key}">${label}${active ? icon(sort.dir === 'asc' ? 'up' : 'down') : ''}</button></th>`;
-  }).join('');
-  const rows = sortedProjects()
+  const head = (user ? ['', ...PROJECT_COLUMNS] : PROJECT_COLUMNS).map((label) => `<th scope="col">${label}</th>`).join('');
+  const rows = projects
     .map((p) => `
-      <tr>
+      <tr data-prefix="${p.prefix}"${user ? ' draggable="true"' : ''}>
+        ${user ? `<td class="grip-cell"><button class="grip" type="button" data-grip="${p.prefix}" title="Drag to reorder, or use the arrow keys" aria-label="Move ${p.prefix}. Use the up and down arrow keys">${icon('grip')}</button></td>` : ''}
         <td>${swatch(p)}</td>
         <td class="prefix">${esc(p.prefix)}</td>
         <td>${esc(p.name)}</td>
@@ -394,6 +353,39 @@ const renderProjects = () => {
     .join('');
   return `<div class="table-wrap"><table class="projects"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
 };
+
+// Puts the projects in the order of the given prefixes, in place.
+const applyOrder = (order) => projects.sort((a, b) => order.indexOf(a.prefix) - order.indexOf(b.prefix));
+
+// Shows the new order at once and stores it; the old order returns when storing fails.
+async function reorderProjects(order) {
+  const previous = projects.map((p) => p.prefix);
+  applyOrder(order);
+  render();
+  const { error } = await send('PUT', 'api/tickets/projects/order', { order });
+  if (error) {
+    applyOrder(previous);
+    toast(error);
+    render();
+  }
+}
+
+function moveProject(prefix, target, after) {
+  if (prefix === target) return;
+  const order = projects.map((p) => p.prefix).filter((p) => p !== prefix);
+  order.splice(order.indexOf(target) + (after ? 1 : 0), 0, prefix);
+  reorderProjects(order);
+}
+
+function moveProjectByOne(prefix, step) {
+  const order = projects.map((p) => p.prefix);
+  const from = order.indexOf(prefix);
+  const to = from + step;
+  if (to < 0 || to >= order.length) return;
+  order.splice(to, 0, order.splice(from, 1)[0]);
+  reorderProjects(order);
+  $('view').querySelector(`[data-grip="${prefix}"]`)?.focus();
+}
 
 let paletteFor = ''; // prefix of the project whose colour is being chosen
 
@@ -624,6 +616,53 @@ function render() {
 }
 
 // Cards can be dragged to another column to change their status, once signed in.
+// Project rows can be dragged to another place in the list, once signed in.
+function setupProjectDragAndDrop() {
+  const view = $('view');
+  let dragged = '';
+  const clearMarks = () => view.querySelectorAll('.drop-before, .drop-after').forEach((el) => el.classList.remove('drop-before', 'drop-after'));
+  const rowOf = (event) => event.target.closest?.('tr[data-prefix]');
+
+  view.addEventListener('dragstart', (event) => {
+    const row = rowOf(event);
+    if (!row || !user) return;
+    dragged = row.dataset.prefix;
+    event.dataTransfer.setData('text/plain', dragged);
+    event.dataTransfer.effectAllowed = 'move';
+    row.classList.add('dragging');
+  });
+  view.addEventListener('dragover', (event) => {
+    const row = rowOf(event);
+    if (!row || !dragged) return;
+    event.preventDefault();
+    clearMarks();
+    const box = row.getBoundingClientRect();
+    row.classList.add(event.clientY > box.top + box.height / 2 ? 'drop-after' : 'drop-before');
+  });
+  view.addEventListener('drop', (event) => {
+    const row = rowOf(event);
+    if (!row || !dragged) return;
+    event.preventDefault();
+    const moved = dragged;
+    const after = row.classList.contains('drop-after');
+    dragged = '';
+    clearMarks();
+    moveProject(moved, row.dataset.prefix, after);
+  });
+  view.addEventListener('dragend', () => {
+    dragged = '';
+    clearMarks();
+    view.querySelector('.dragging')?.classList.remove('dragging');
+  });
+  view.addEventListener('keydown', (event) => {
+    const grip = event.target.closest?.('[data-grip]');
+    const step = { ArrowUp: -1, ArrowDown: 1 }[event.key];
+    if (!grip || !step) return;
+    event.preventDefault();
+    moveProjectByOne(grip.dataset.grip, step);
+  });
+}
+
 function setupDragAndDrop() {
   const view = $('view');
   let dragged = '';
@@ -631,7 +670,8 @@ function setupDragAndDrop() {
 
   view.addEventListener('dragstart', (event) => {
     const card = event.target.closest?.('.card');
-    if (!card || !user) return event.preventDefault();
+    if (!card) return;
+    if (!user) return event.preventDefault();
     dragged = card.dataset.id;
     event.dataTransfer.setData('text/plain', dragged);
     event.dataTransfer.effectAllowed = 'move';
@@ -676,12 +716,12 @@ function setupTabs() {
   }
 }
 
-// The filter lists the projects in the order chosen in the Projects view.
+// The filter lists the projects in the order of the Projects view.
 function fillProjectFilter() {
   const select = $('project');
   select.innerHTML =
     '<option value="">All projects</option>' +
-    sortedProjects().map((p) => `<option value="${p.prefix}">${p.prefix} · ${esc(p.name)}</option>`).join('');
+    projects.map((p) => `<option value="${p.prefix}">${p.prefix} · ${esc(p.name)}</option>`).join('');
   select.value = state.project;
 }
 
@@ -705,14 +745,13 @@ readHash();
 setupTabs();
 setupProjectFilter();
 setupDragAndDrop();
+setupProjectDragAndDrop();
 $('signin').onclick = () => {
   rememberEditor(true);
   location.href = `api/tickets/login?next=${encodeURIComponent(location.hash)}`;
 };
 $('view').addEventListener('click', (event) => {
   if (event.target.closest('.add-card')) return startCreating();
-  const sorter = event.target.closest('[data-sort]');
-  if (sorter) return setSort(sorter.dataset.sort);
   const picker = event.target.closest('[data-pick]');
   if (picker) {
     const open = paletteFor === picker.dataset.pick;
