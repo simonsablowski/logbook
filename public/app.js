@@ -9,7 +9,7 @@ try {
   document.getElementById('view').innerHTML = '<div class="note empty">Could not load the tickets.</div>';
   throw error;
 }
-const { projects, tickets, generated } = data;
+const { projects, tickets } = data;
 const projectByPrefix = Object.fromEntries(projects.map((p) => [p.prefix, p]));
 const projectOf = (ticket) => projectByPrefix[ticket.project];
 
@@ -22,7 +22,6 @@ const COLUMNS = [
 ];
 const STATUS_LABEL = Object.fromEntries(COLUMNS);
 const WIP_LIMITS = { planned: 6, 'in-progress': 2 };
-const COMPLETED_ON_BOARD = 6;
 const PRIORITY_LABEL = { now: 'Now', next: 'Next', later: 'Later' };
 const PRIORITY_RANK = { now: 0, next: 1, later: 2 };
 const EFFORT_LABEL = { S: 'Small', M: 'Medium', L: 'Large' };
@@ -113,9 +112,9 @@ const effortFact = (ticket) =>
 
 const card = (ticket) => `
   <button class="card${ticket.id === state.ticket ? ' selected' : ''}" data-id="${ticket.id}">
-    <div class="id">${ticket.id} · ${esc(projectOf(ticket).name)}</div>
+    <div class="id">${ticket.id}</div>
     <div class="card-title">${esc(ticket.title)}</div>
-    <div class="meta">${priorityFact(ticket.priority)}<span class="spacer"></span>${effortFact(ticket)}</div>
+    <div class="meta">${ticket.completed ? fact('date', 'Completed', formatDate(ticket.completed)) : priorityFact(ticket.priority)}<span class="spacer"></span>${effortFact(ticket)}</div>
   </button>`;
 
 const backlogRow = (ticket) => `
@@ -133,7 +132,7 @@ const changelogEntry = (ticket) => {
     <div>
       <div class="entry-title">${esc(ticket.title)}</div>
       ${EMPTY_TEXT.test(summary) ? '' : `<p>${esc(summary)}</p>`}
-      <div class="meta"><span>${ticket.id}</span><span>${esc(projectOf(ticket).name)}</span></div>
+      <div class="meta"><span>${ticket.id}</span></div>
     </div>
   </button>`;
 };
@@ -144,18 +143,37 @@ function renderColumn([status, label], visible) {
   const limit = WIP_LIMITS[status];
   const total = tickets.filter((t) => t.status === status).length;
   const items = status === 'completed' ? visible.sort(byCompletion) : visible.sort(byPriority);
-  const shown = status === 'completed' ? items.slice(0, COMPLETED_ON_BOARD) : items;
   const limitClass = limit && total > limit ? ' over-limit' : limit && total === limit ? ' at-limit' : '';
   const count = limit
     ? `<span class="limit" title="WIP limit ${limit}, counted across all projects">${total} / ${limit}</span>`
     : `<span>${items.length}</span>`;
-  const hidden = items.length - shown.length;
+  const overflowView = status === 'completed' ? 'changelog' : 'backlog';
   return `
   <section class="column${limitClass}">
     <h2 class="heading"><span>${label}</span>${count}</h2>
-    ${shown.map(card).join('') || '<div class="note">Empty</div>'}
-    ${hidden ? `<div class="note">+ ${hidden} more in the changelog</div>` : ''}
+    <div class="cards">${items.map(card).join('') || '<div class="note">Empty</div>'}</div>
+    <div class="note more" data-view-name="${overflowView}" hidden></div>
   </section>`;
+}
+
+// The board never scrolls: every column shows as many cards as fit and summarises the rest.
+function fitBoard() {
+  for (const column of document.querySelectorAll('.column')) {
+    const cards = column.querySelector('.cards');
+    const note = column.querySelector('.more');
+    const items = [...cards.querySelectorAll('.card')];
+    for (const item of items) item.hidden = false;
+    note.hidden = true;
+    if (cards.scrollHeight <= cards.clientHeight) continue;
+
+    note.textContent = '+ 99 more';
+    note.hidden = false;
+    const room = cards.clientHeight;
+    const bottoms = items.map((item) => item.offsetTop + item.offsetHeight);
+    const hiddenCount = bottoms.filter((bottom) => bottom > room).length;
+    items.slice(items.length - hiddenCount).forEach((item) => { item.hidden = true; });
+    note.textContent = `+ ${hiddenCount} more in the ${note.dataset.viewName}`;
+  }
 }
 
 const renderBoard = (visible) =>
@@ -234,6 +252,8 @@ function render() {
       $('close').focus();
     };
   }
+  document.body.classList.toggle('board-view', state.view === 'board');
+  if (state.view === 'board') fitBoard();
   renderDetail();
   writeHash();
 }
@@ -272,5 +292,6 @@ setupTabs();
 setupProjectFilter();
 $('backdrop').onclick = closeDetail;
 document.addEventListener('keydown', (event) => event.key === 'Escape' && closeDetail());
-$('generated').textContent = `updated ${formatDate(generated.slice(0, 10))}`;
+window.addEventListener('resize', () => state.view === 'board' && requestAnimationFrame(fitBoard));
 render();
+document.fonts.ready.then(() => state.view === 'board' && fitBoard());
