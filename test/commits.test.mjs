@@ -49,3 +49,43 @@ test('attachCommits is idempotent', () => {
   const once = attachCommits([{ id: 'MTV-001', commits: [] }], found);
   assert.equal(attachCommits(once.tickets, found).added, 0);
 });
+
+const started = (status, extra = {}) => ({ id: 'MTV-001', status, priority: 'next', commits: [], ...extra });
+const first = { 'MTV-001': [{ sha: 'aaaaaaa', subject: 'MTV-001: First' }] };
+
+test('a new commit moves a ticket in idea or planned to in-progress', () => {
+  for (const status of ['idea', 'planned']) {
+    const { tickets, moved } = attachCommits([started(status)], first);
+    assert.equal(tickets[0].status, 'in-progress');
+    assert.deepEqual(moved, ['MTV-001']);
+  }
+});
+
+test('tickets in progress or completed keep their status', () => {
+  for (const status of ['in-progress', 'completed']) {
+    const { tickets, moved } = attachCommits([started(status, { completed: '2026-10-01' })], first);
+    assert.equal(tickets[0].status, status);
+    assert.deepEqual(moved, []);
+  }
+});
+
+test('a commit that is already attached moves nothing, so a ticket moved back by hand stays', () => {
+  const known = started('planned', { commits: [{ sha: 'aaaaaaa', subject: 'MTV-001: First' }] });
+  const { tickets, added, moved } = attachCommits([known], first);
+  assert.equal(added, 0);
+  assert.equal(tickets[0].status, 'planned');
+  assert.deepEqual(moved, []);
+});
+
+test('the next new commit moves the ticket again', () => {
+  const back = started('planned', { commits: [{ sha: 'aaaaaaa', subject: 'MTV-001: First' }] });
+  const second = { 'MTV-001': [...first['MTV-001'], { sha: 'bbbbbbb', subject: 'MTV-001: Second' }] };
+  assert.equal(attachCommits([back], second).tickets[0].status, 'in-progress');
+});
+
+test('tickets without new commits are not touched', () => {
+  const idle = [started('planned'), { ...started('idea'), id: 'MTV-002' }];
+  const { tickets, moved } = attachCommits(idle, first);
+  assert.equal(tickets[1].status, 'idea');
+  assert.deepEqual(moved, ['MTV-001']);
+});

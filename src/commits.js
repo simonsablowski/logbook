@@ -22,16 +22,29 @@ export function ticketCommits(commits, prefix) {
   return found;
 }
 
-// Adds the commits a ticket does not have yet. Returns the tickets and the number of added commits.
+// Statuses that mean the work has not started. A new commit moves such a ticket to in-progress.
+const NOT_STARTED = ['idea', 'planned'];
+
+// Adds the commits a ticket does not have yet and starts the work on tickets that had not begun.
+// Only a commit that is attached now moves a ticket, so a ticket that somebody moves back by hand
+// stays where it is until the next new commit. Tickets that are in progress or completed keep
+// their status, and no ticket is completed here.
+// Returns the tickets, the number of added commits and the IDs of the tickets that were moved.
 export function attachCommits(tickets, found) {
   let added = 0;
+  const moved = [];
   const updated = tickets.map((ticket) => {
     const fresh = (found[ticket.id] || []).filter((c) => !ticket.commits.some((known) => known.sha === c.sha));
     if (!fresh.length) return ticket;
     added += fresh.length;
-    return { ...ticket, commits: [...ticket.commits, ...fresh] };
+    const next = { ...ticket, commits: [...ticket.commits, ...fresh] };
+    if (NOT_STARTED.includes(ticket.status)) {
+      next.status = 'in-progress';
+      moved.push(ticket.id);
+    }
+    return next;
   });
-  return { tickets: updated, added };
+  return { tickets: updated, added, moved };
 }
 
 async function fetchCommits(repo, since, token) {
@@ -62,7 +75,7 @@ export async function syncCommits(env) {
   const now = Date.now();
   const projects = await readProjects(env);
   const state = await readSyncState(env);
-  const run = { time: new Date(now).toISOString(), added: 0, repos: {} };
+  const run = { time: new Date(now).toISOString(), added: 0, moved: [], repos: {} };
   const found = {};
 
   for (const project of projects) {
@@ -77,10 +90,12 @@ export async function syncCommits(env) {
   }
 
   if (attachCommits(await readTickets(env), found).added) {
-    run.added = await mutate(env, (tickets) => {
-      const { tickets: updated, added } = attachCommits(tickets, found);
-      return { tickets: updated, result: added };
+    const result = await mutate(env, (tickets) => {
+      const { tickets: updated, added, moved } = attachCommits(tickets, found);
+      return { tickets: updated, result: { added, moved } };
     });
+    run.added = result.added;
+    run.moved = result.moved;
   }
   await writeSyncState(env, run);
   return run;
