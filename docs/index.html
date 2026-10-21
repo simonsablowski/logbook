@@ -52,8 +52,12 @@ button:focus-visible,select:focus-visible,.card:focus-visible,.row:focus-visible
 .sha{font:11px ui-monospace,Consolas,monospace;padding:1px 6px;border-radius:4px;background:var(--sunken);color:var(--accent);text-decoration:none}
 a.sha:hover{text-decoration:underline}
 .empty{color:var(--muted);font-size:14px;padding:12px 4px}
-#detail{margin-top:20px}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+#detail{position:fixed;top:0;right:0;bottom:0;width:min(480px,100%);background:var(--surface);border-left:1px solid var(--line);overflow-y:auto;z-index:20;transform:translateX(100%);visibility:hidden;transition:transform .2s ease,visibility 0s .2s}
+#detail.open{transform:none;visibility:visible;transition:transform .2s ease}
+#backdrop{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:10;opacity:0;pointer-events:none;transition:opacity .2s}
+#backdrop.open{opacity:1;pointer-events:auto}
+@media (prefers-reduced-motion:reduce){#detail,#detail.open,#backdrop{transition:none}}
+.panel{padding:20px 22px 32px}
 .panel h3{font-size:17px;margin:4px 0 8px}
 .panel h4{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);margin:16px 0 4px}
 .panel p{margin:0 0 8px;font-size:14px}
@@ -78,7 +82,8 @@ a.sha:hover{text-decoration:underline}
     <select id="proj"></select>
   </div>
   <main id="view"></main>
-  <div id="detail" aria-live="polite"></div>
+  <div id="backdrop"></div>
+  <aside id="detail" aria-label="Ticket details"></aside>
 </div>
 <script src="data.js"></script>
 <script>
@@ -127,7 +132,7 @@ function draw() {
     h = x.map(t => `<button class="cl" data-id="${t.id}"><div class="d">${fmt(t.completed)}</div><div><div class="t">${esc(t.title)}</div><p>${esc((t.body.split('## Summary')[1] || '').split('##')[0].trim())}</p><div class="meta"><span class="id">${t.id}</span><span>${esc(P[t.project].name)}</span>${pill(t)}</div></div></button>`).join('') || '<div class="empty">Nothing completed yet.</div>';
   }
   document.getElementById('view').innerHTML = h;
-  document.querySelectorAll('[data-id]').forEach(e => e.onclick = () => { st.t = e.dataset.id; draw(); document.getElementById('detail').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+  document.querySelectorAll('[data-id]').forEach(e => e.onclick = () => { st.t = e.dataset.id; draw(); document.getElementById('close').focus(); });
   detail(); sync();
 }
 
@@ -137,7 +142,9 @@ function md(s) {
 
 function detail() {
   const t = T.find(x => x.id === st.t), el = document.getElementById('detail');
-  if (!t) { el.innerHTML = ''; return; }
+  el.classList.toggle('open', !!t);
+  document.getElementById('backdrop').classList.toggle('open', !!t);
+  if (!t) return;
   el.innerHTML = `<div class="panel"><div class="top"><div><span class="id">${t.id}</span> · <a href="${esc(P[t.project].url)}" target="_blank" rel="noopener" style="color:var(--text2)">${esc(P[t.project].name)}</a><h3>${esc(t.title)}</h3></div><button id="close" aria-label="Close ticket">Close</button></div>
   <div class="meta">${dot(t.priority)}${t.priority ? `<span>${PRI[t.priority][1]}</span>` : ''}<span class="pill">${LBL[t.status]}</span><span class="pill">${esc(t.type)}</span>${t.effort ? `<span class="pill">Effort ${t.effort}</span>` : ''}${t.completed ? `<span class="pill">${fmt(t.completed)}</span>` : ''}${pill(t)}</div>
   ${md(t.body)}
@@ -145,6 +152,9 @@ function detail() {
   document.getElementById('close').onclick = () => { st.t = ''; draw(); };
 }
 
+const closeDetail = () => { if (st.t) { st.t = ''; draw(); } };
+document.getElementById('backdrop').onclick = closeDetail;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
 const sel = document.getElementById('proj');
 sel.innerHTML = '<option value="">All projects</option>' + D.projects.map(p => `<option value="${p.prefix}">${p.prefix} · ${esc(p.name)}</option>`).join('');
 sel.value = P[st.p] ? st.p : ''; if (!P[st.p]) st.p = '';
