@@ -54,6 +54,21 @@ export async function writeSyncState(env, state) {
   await env.TICKETS.put(SYNC_KEY, JSON.stringify(state), { httpMetadata: { contentType: 'application/json' } });
 }
 
+// Same conditional write as for the tickets: the change is applied again when somebody else wrote first.
+export async function mutateProjects(env, change) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const object = await env.TICKETS.get(PROJECTS_KEY);
+    if (!object) throw new HttpError(500, `The storage has no ${PROJECTS_KEY}.`);
+    const { projects, result } = change(await object.json());
+    const written = await env.TICKETS.put(PROJECTS_KEY, JSON.stringify(projects, null, 2), {
+      httpMetadata: { contentType: 'application/json' },
+      onlyIf: { etagMatches: object.etag },
+    });
+    if (written !== null) return result;
+  }
+  throw new HttpError(409, 'The projects were changed at the same time. Try again.');
+}
+
 async function copyObject(env, key, backupKey) {
   const source = await env.TICKETS.get(key);
   if (source) await env.TICKETS.put(backupKey, source.body, { httpMetadata: { contentType: 'application/json' } });

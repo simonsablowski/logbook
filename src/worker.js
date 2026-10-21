@@ -1,6 +1,7 @@
 import { authenticate } from './auth.js';
 import { syncCommits } from './commits.js';
-import { backup, mutate, readProjects, readSyncState, readTickets } from './store.js';
+import { COLOURS, patchProject } from './projects.js';
+import { backup, mutate, mutateProjects, readProjects, readSyncState, readTickets } from './store.js';
 import { HttpError, createTicket, patchTicket } from './tickets.js';
 
 const BACKUP_CRON = '0 3 * * *';
@@ -33,7 +34,19 @@ async function handleApi(request, env, url, auth) {
   if (pathname === '/api/data' && method === 'GET') {
     const [projects, tickets] = await Promise.all([readProjects(env), readTickets(env)]);
     tickets.sort((a, b) => a.id.localeCompare(b.id));
-    return reply({ projects, tickets, generated: new Date().toISOString(), user: auth.user });
+    return reply({ projects, colours: COLOURS, tickets, generated: new Date().toISOString(), user: auth.user });
+  }
+
+  // Everything that changes data lives under /api/tickets, the path Cloudflare Access protects.
+  const projectPrefix = pathname.match(/^\/api\/tickets\/projects\/([A-Z]{3})$/)?.[1];
+  if (projectPrefix && method === 'PATCH') {
+    const patch = await readJson(request);
+    return reply(await mutateProjects(env, (projects) => {
+      const index = projects.findIndex((p) => p.prefix === projectPrefix);
+      if (index < 0) throw new HttpError(404, `No project ${projectPrefix}`);
+      const project = patchProject(projects[index], patch);
+      return { projects: projects.with(index, project), result: project };
+    }));
   }
 
   // The viewer asks who is signed in to decide whether to offer editing.

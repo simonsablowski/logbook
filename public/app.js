@@ -9,11 +9,11 @@ try {
   document.getElementById('view').innerHTML = '<div class="note empty">Could not load the tickets.</div>';
   throw error;
 }
-const { projects, tickets } = data;
+const { projects, tickets, colours } = data;
 const projectByPrefix = Object.fromEntries(projects.map((p) => [p.prefix, p]));
 const projectOf = (ticket) => projectByPrefix[ticket.project];
 
-const VIEWS = ['board', 'backlog', 'changelog'];
+const VIEWS = ['projects', 'board', 'backlog', 'changelog'];
 const COLUMNS = [
   ['idea', 'Idea'],
   ['planned', 'Planned'],
@@ -37,6 +37,8 @@ const ICONS = {
   effort: '<path d="M5 20v-6M12 20V9M19 20V4"/>',
   date: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  up: '<path d="m6 15 6-6 6 6"/>',
+  down: '<path d="m6 9 6 6 6-6"/>',
 };
 
 // Helpers ------------------------------------------------------------
@@ -273,7 +275,7 @@ const effortFact = (ticket) =>
     : '';
 
 const card = (ticket) => `
-  <div class="card${ticket.id === state.ticket ? ' selected' : ''}" data-id="${ticket.id}" role="button" tabindex="0"${user ? ' draggable="true"' : ''}>
+  <div class="card${ticket.id === state.ticket ? ' selected' : ''}" data-id="${ticket.id}" role="button" tabindex="0"${user ? ' draggable="true"' : ''}${projectOf(ticket).color ? ` style="--tint:${projectOf(ticket).color}"` : ''}>
     <div class="id">${ticket.id}</div>
     <div class="card-title" title="${esc(ticket.title)}">${esc(ticket.title)}</div>
     <div class="meta">${ticket.completed ? fact('date', 'Completed', formatDate(ticket.completed)) : priorityFact(ticket.priority)}<span class="spacer"></span>${effortFact(ticket)}</div>
@@ -320,6 +322,109 @@ const changelogEntry = (ticket) => {
     </div>
   </button>`;
 };
+
+// Projects: sorting and colours --------------------------------------
+// The sort order of the project list is also the order of the project filter.
+
+const PROJECT_COLUMNS = [
+  ['color', 'Colour'],
+  ['prefix', 'Prefix'],
+  ['name', 'Name'],
+  ['url', 'Live site'],
+  ['repo', 'Repository'],
+];
+const SORT_KEY = 'logbook-project-sort';
+
+let sort = { key: 'prefix', dir: 'asc' };
+try {
+  const saved = JSON.parse(localStorage.getItem(SORT_KEY));
+  if (PROJECT_COLUMNS.some(([key]) => key === saved?.key) && ['asc', 'desc'].includes(saved?.dir)) sort = saved;
+} catch {}
+
+const colourName = (hex) => colours.find((c) => c.hex === hex)?.name;
+// Colours sort in the order of the palette, projects without a colour last.
+function sortValue(project, key) {
+  if (key !== 'color') return String(project[key] ?? '').toLowerCase();
+  const index = colours.findIndex((c) => c.hex === project.color);
+  return index < 0 ? colours.length : index;
+}
+
+function sortedProjects() {
+  const sign = sort.dir === 'asc' ? 1 : -1;
+  return [...projects].sort((a, b) => {
+    const x = sortValue(a, sort.key);
+    const y = sortValue(b, sort.key);
+    const order = typeof x === 'number' ? x - y : x.localeCompare(y);
+    return sign * order || a.prefix.localeCompare(b.prefix);
+  });
+}
+
+function setSort(key) {
+  sort = { key, dir: sort.key === key && sort.dir === 'asc' ? 'desc' : 'asc' };
+  try {
+    localStorage.setItem(SORT_KEY, JSON.stringify(sort));
+  } catch {}
+  render();
+}
+
+const swatch = (project) => {
+  const name = colourName(project.color) || 'No colour';
+  const attributes = `class="swatch${project.color ? '' : ' none'}"${project.color ? ` style="background:${project.color}"` : ''}`;
+  return user
+    ? `<button ${attributes} type="button" data-pick="${project.prefix}" title="${name}" aria-label="Colour of ${project.prefix}: ${name}. Change it"></button>`
+    : `<span ${attributes} title="${name}" role="img" aria-label="Colour of ${project.prefix}: ${name}"></span>`;
+};
+
+const renderProjects = () => {
+  const head = PROJECT_COLUMNS.map(([key, label]) => {
+    const active = sort.key === key;
+    const direction = sort.dir === 'asc' ? 'ascending' : 'descending';
+    return `<th scope="col" aria-sort="${active ? direction : 'none'}">
+      <button class="sort" type="button" data-sort="${key}">${label}${active ? icon(sort.dir === 'asc' ? 'up' : 'down') : ''}</button></th>`;
+  }).join('');
+  const rows = sortedProjects()
+    .map((p) => `
+      <tr>
+        <td>${swatch(p)}</td>
+        <td class="prefix">${esc(p.prefix)}</td>
+        <td>${esc(p.name)}</td>
+        <td><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url.replace(/^https?:\/\//, ''))}</a></td>
+        <td><a href="https://github.com/${esc(p.repo)}" target="_blank" rel="noopener">github.com/${esc(p.repo)}</a></td>
+      </tr>`)
+    .join('');
+  return `<div class="table-wrap"><table class="projects"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+};
+
+let paletteFor = ''; // prefix of the project whose colour is being chosen
+
+function closePalette() {
+  paletteFor = '';
+  $('palette').hidden = true;
+}
+
+function openPalette(button) {
+  const project = projectByPrefix[button.dataset.pick];
+  paletteFor = project.prefix;
+  const choices = colours
+    .map((c) => `<button class="swatch${c.hex === project.color ? ' current' : ''}" type="button" data-colour="${c.hex}" style="background:${c.hex}" title="${c.name}" aria-label="${c.name}"></button>`)
+    .join('');
+  $('palette').innerHTML = `<div class="palette-title">Colour of ${esc(project.prefix)}</div>
+    <div class="swatches">${choices}<button class="swatch none${project.color ? '' : ' current'}" type="button" data-colour="" title="No colour" aria-label="No colour"></button></div>`;
+  const box = button.getBoundingClientRect();
+  $('palette').style.top = `${box.bottom + 8}px`;
+  $('palette').style.left = `${Math.max(8, Math.min(box.left, innerWidth - 240))}px`;
+  $('palette').hidden = false;
+}
+
+async function setProjectColour(prefix, hex) {
+  closePalette();
+  const { error, result } = await send('PATCH', `api/tickets/projects/${prefix}`, { color: hex || null });
+  if (error) return toast(error);
+  const project = projectByPrefix[prefix];
+  if (result.color) project.color = result.color;
+  else delete project.color;
+  render();
+}
 
 // Views --------------------------------------------------------------
 
@@ -380,7 +485,7 @@ const renderChangelog = (visible) =>
   visible.filter((t) => t.status === 'completed').sort(byCompletion).map(changelogEntry).join('') ||
   '<div class="note empty">Nothing completed yet.</div>';
 
-const RENDERERS = { board: renderBoard, backlog: renderBacklog, changelog: renderChangelog };
+const RENDERERS = { projects: renderProjects, board: renderBoard, backlog: renderBacklog, changelog: renderChangelog };
 
 // Detail drawer ------------------------------------------------------
 
@@ -486,12 +591,15 @@ function closeDetail() {
 // Rendering and events -----------------------------------------------
 
 function render() {
+  closePalette();
   for (const tab of document.querySelectorAll('.tab')) {
     const selected = tab.dataset.view === state.view;
     tab.setAttribute('aria-selected', selected);
     tab.tabIndex = selected ? 0 : -1;
   }
   $('view').setAttribute('aria-labelledby', `tab-${state.view}`);
+  fillProjectFilter();
+  $('project').hidden = state.view === 'projects';
   $('view').innerHTML = RENDERERS[state.view](tickets.filter((t) => !state.project || t.project === state.project));
   for (const el of $('view').querySelectorAll('[data-id]')) {
     const open = () => {
@@ -568,14 +676,18 @@ function setupTabs() {
   }
 }
 
-function setupProjectFilter() {
+// The filter lists the projects in the order chosen in the Projects view.
+function fillProjectFilter() {
   const select = $('project');
   select.innerHTML =
     '<option value="">All projects</option>' +
-    projects.map((p) => `<option value="${p.prefix}">${p.prefix} · ${esc(p.name)}</option>`).join('');
+    sortedProjects().map((p) => `<option value="${p.prefix}">${p.prefix} · ${esc(p.name)}</option>`).join('');
   select.value = state.project;
-  select.onchange = () => {
-    state.project = select.value;
+}
+
+function setupProjectFilter() {
+  $('project').onchange = () => {
+    state.project = $('project').value;
     render();
   };
 }
@@ -597,7 +709,22 @@ $('signin').onclick = () => {
   rememberEditor(true);
   location.href = `api/tickets/login?next=${encodeURIComponent(location.hash)}`;
 };
-$('view').addEventListener('click', (event) => event.target.closest('.add-card') && startCreating());
+$('view').addEventListener('click', (event) => {
+  if (event.target.closest('.add-card')) return startCreating();
+  const sorter = event.target.closest('[data-sort]');
+  if (sorter) return setSort(sorter.dataset.sort);
+  const picker = event.target.closest('[data-pick]');
+  if (picker) {
+    const open = paletteFor === picker.dataset.pick;
+    closePalette();
+    if (!open) openPalette(picker);
+  }
+});
+$('palette').addEventListener('click', (event) => {
+  const choice = event.target.closest('[data-colour]');
+  if (choice) setProjectColour(paletteFor, choice.dataset.colour);
+});
+document.addEventListener('click', (event) => !event.target.closest('#palette, [data-pick]') && closePalette());
 $('avatar').onclick = toggleAccountMenu;
 $('signout').onclick = () => {
   rememberEditor(false);
@@ -607,7 +734,8 @@ document.addEventListener('click', (event) => !event.target.closest('#account') 
 $('backdrop').onclick = () => !state.editing && !state.creating && closeDetail();
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
-  if (!$('account-menu').hidden) closeAccountMenu();
+  if (!$('palette').hidden) closePalette();
+  else if (!$('account-menu').hidden) closeAccountMenu();
   else cancelOrClose();
 });
 window.addEventListener('resize', () => state.view === 'board' && requestAnimationFrame(fitBoard));

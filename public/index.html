@@ -14,6 +14,7 @@
     <div class="bar">
       <div class="bar-start">
         <div class="tabs" role="tablist" aria-label="Views">
+          <button class="tab" role="tab" id="tab-projects" data-view="projects" aria-controls="view">Projects</button>
           <button class="tab" role="tab" id="tab-board" data-view="board" aria-controls="view">Board</button>
           <button class="tab" role="tab" id="tab-backlog" data-view="backlog" aria-controls="view">Backlog</button>
           <button class="tab" role="tab" id="tab-changelog" data-view="changelog" aria-controls="view">Changelog</button>
@@ -36,6 +37,7 @@
     <main id="view" role="tabpanel"></main>
     <div id="backdrop"></div>
     <aside id="detail" aria-label="Ticket details"></aside>
+    <div id="palette" class="menu palette" role="dialog" aria-label="Choose a colour" hidden></div>
     <div id="toast" role="status" hidden></div>
   </div>
 
