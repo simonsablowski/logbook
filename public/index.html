@@ -12,17 +12,24 @@
     <h1 class="sr">Logbook</h1>
 
     <div class="bar">
-      <div class="tabs" role="tablist" aria-label="Views">
-        <button class="tab" role="tab" id="tab-board" data-view="board" aria-controls="view">Board</button>
-        <button class="tab" role="tab" id="tab-backlog" data-view="backlog" aria-controls="view">Backlog</button>
-        <button class="tab" role="tab" id="tab-changelog" data-view="changelog" aria-controls="view">Changelog</button>
-      </div>
-      <div class="bar-end">
-        <span id="who" class="who" hidden></span>
-        <button id="signin" type="button" hidden>Sign in to edit</button>
-        <button id="new-ticket" type="button" hidden>New ticket</button>
+      <div class="bar-start">
+        <div class="tabs" role="tablist" aria-label="Views">
+          <button class="tab" role="tab" id="tab-board" data-view="board" aria-controls="view">Board</button>
+          <button class="tab" role="tab" id="tab-backlog" data-view="backlog" aria-controls="view">Backlog</button>
+          <button class="tab" role="tab" id="tab-changelog" data-view="changelog" aria-controls="view">Changelog</button>
+        </div>
         <label for="project" class="sr">Project</label>
         <select id="project"></select>
+      </div>
+      <div class="bar-end">
+        <button id="signin" type="button" hidden>Sign in to edit</button>
+        <div class="account" id="account" hidden>
+          <button id="avatar" class="avatar" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="account-menu"></button>
+          <div id="account-menu" class="menu" hidden>
+            <div id="who" class="menu-user"></div>
+            <button id="signout" type="button">Sign out</button>
+          </div>
+        </div>
       </div>
     </div>
 

@@ -158,11 +158,39 @@ async function checkSession() {
   if (!user) rememberEditor(false);
 }
 
+const initials = (name) => {
+  const local = name.split('@')[0];
+  const parts = local.split(/[._-]+/).filter(Boolean);
+  return ((parts.length > 1 ? parts[0][0] + parts[1][0] : local.slice(0, 2)) || '?').toUpperCase();
+};
+
 function updateSessionBar() {
-  $('who').hidden = !user;
-  $('who').textContent = user;
   $('signin').hidden = Boolean(user);
-  $('new-ticket').hidden = !user;
+  $('account').hidden = !user;
+  $('avatar').textContent = initials(user);
+  $('avatar').title = user;
+  $('avatar').setAttribute('aria-label', `Account of ${user}`);
+  $('who').textContent = user;
+  if (!user) closeAccountMenu();
+}
+
+function closeAccountMenu() {
+  $('account-menu').hidden = true;
+  $('avatar').setAttribute('aria-expanded', 'false');
+}
+
+function toggleAccountMenu() {
+  const open = $('account-menu').hidden;
+  $('account-menu').hidden = !open;
+  $('avatar').setAttribute('aria-expanded', String(open));
+}
+
+function startCreating() {
+  state.creating = true;
+  state.editing = false;
+  state.ticket = '';
+  render();
+  $('edit-form').querySelector('[name=project]').focus();
 }
 
 function toast(message) {
@@ -303,9 +331,11 @@ function renderColumn([status, label], visible) {
     ? `<span class="limit" title="WIP limit ${limit}, counted across all projects">${total} / ${limit}</span>`
     : `<span>${items.length}</span>`;
   const overflowView = status === 'completed' ? 'changelog' : 'backlog';
+  // New tickets start as ideas, so the button to create one sits in the Idea column.
+  const add = status === 'idea' && user ? '<button class="add" type="button" title="New ticket" aria-label="New ticket">+</button>' : '';
   return `
   <section class="column${limitClass}" data-status="${status}">
-    <h2 class="heading"><span>${label}</span>${count}</h2>
+    <h2 class="heading"><span>${label}</span><span class="col-end">${add}${count}</span></h2>
     <div class="cards">${items.map(card).join('') || '<div class="note">Empty</div>'}</div>
     <div class="note more" data-view-name="${overflowView}" hidden></div>
   </section>`;
@@ -565,15 +595,19 @@ $('signin').onclick = () => {
   rememberEditor(true);
   location.href = `api/tickets/login?next=${encodeURIComponent(location.hash)}`;
 };
-$('new-ticket').onclick = () => {
-  state.creating = true;
-  state.editing = false;
-  state.ticket = '';
-  render();
-  $('edit-form').querySelector('[name=project]').focus();
+$('view').addEventListener('click', (event) => event.target.closest('.add') && startCreating());
+$('avatar').onclick = toggleAccountMenu;
+$('signout').onclick = () => {
+  rememberEditor(false);
+  location.href = `/cdn-cgi/access/logout?returnTo=${encodeURIComponent(`${location.origin}/`)}`;
 };
+document.addEventListener('click', (event) => !event.target.closest('#account') && closeAccountMenu());
 $('backdrop').onclick = () => !state.editing && !state.creating && closeDetail();
-document.addEventListener('keydown', (event) => event.key === 'Escape' && cancelOrClose());
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  if (!$('account-menu').hidden) closeAccountMenu();
+  else cancelOrClose();
+});
 window.addEventListener('resize', () => state.view === 'board' && requestAnimationFrame(fitBoard));
 render();
 checkSession().then(render);
