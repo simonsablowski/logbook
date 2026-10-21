@@ -1,3 +1,5 @@
+import { groupByWeek, lastWeeks, weekCounts, weekNumber, weekRange } from './weeks.js';
+
 // Data ---------------------------------------------------------------
 
 let data;
@@ -652,11 +654,39 @@ const renderBacklog = (visible) =>
     })
     .join('');
 
-const renderChangelog = (visible) =>
-  `<section class="lane">${
-    visible.filter((t) => t.status === 'completed').sort(byCompletion).map(changelogEntry).join('') ||
-    '<div class="note">Nothing completed yet.</div>'
-  }</section>`;
+const WEEKS_SHOWN = 12;
+
+// One bar for each of the last weeks, stacked by project in the colours of the projects.
+function renderWeekStrip(visible) {
+  const counts = weekCounts(visible, lastWeeks(WEEKS_SHOWN));
+  const max = Math.max(1, ...counts.map((c) => c.total));
+  const bars = counts
+    .map(({ week, total, byProject }) => {
+      const segments = projects
+        .filter((p) => byProject[p.prefix])
+        .map((p) => `<span class="week-segment" style="flex:${byProject[p.prefix]};background:${p.color || 'var(--text2)'}"></span>`)
+        .join('');
+      const label = `Week ${weekNumber(week)}, ${weekRange(week)}: ${total} completed`;
+      return `
+      <button class="week-bar" type="button" data-jump="${week}" title="${label}" aria-label="${label}">
+        <span class="week-count">${total || ''}</span>
+        <span class="week-plot"><span class="week-stack${total ? '' : ' empty'}" style="height:${total ? Math.max(6, (total / max) * 100) : 0}%">${segments}</span></span>
+        <span class="week-label">${weekNumber(week)}</span>
+      </button>`;
+    })
+    .join('');
+  return `<section class="lane"><div class="group heading">Completed per week</div><div class="week-strip">${bars}</div></section>`;
+}
+
+function renderChangelog(visible) {
+  const done = visible.filter((t) => t.status === 'completed').sort(byCompletion);
+  const entries = groupByWeek(done)
+    .map(({ week, tickets: inWeek }) => `
+      <div class="group heading week-heading" data-week="${week}">Week ${weekNumber(week)} · ${weekRange(week)} · ${inWeek.length} completed</div>
+      ${inWeek.map(changelogEntry).join('')}`)
+    .join('');
+  return `${renderWeekStrip(visible)}<section class="lane">${entries || '<div class="note">Nothing completed yet.</div>'}</section>`;
+}
 
 const RENDERERS = { projects: renderProjects, board: renderBoard, backlog: renderBacklog, changelog: renderChangelog };
 
@@ -995,6 +1025,12 @@ $('view').addEventListener('click', (event) => {
   const editButton = event.target.closest('[data-edit-project]');
   if (editButton) return openProjectForm({ mode: 'edit', prefix: editButton.dataset.editProject });
   if (event.target.closest('.add-card')) return startCreating();
+  const bar = event.target.closest('[data-jump]');
+  if (bar) {
+    const heading = $('view').querySelector(`[data-week="${bar.dataset.jump}"]`);
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return heading?.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+  }
   const counter = event.target.closest('[data-limit-for]');
   if (counter) {
     const open = limitFor === counter.dataset.limitFor;

@@ -804,6 +804,67 @@ button.swatch:hover {
   text-align: left;
 }
 
+/* The strip of completed tickets per week above the Changelog. */
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.week-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 4px 0;
+  background: none;
+  border-color: transparent;
+  font-size: var(--fs-s);
+  color: var(--text2);
+}
+
+.week-bar:hover {
+  background: var(--surface);
+}
+
+.week-count {
+  height: 1.2em;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.week-plot {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 72px;
+  padding: 0 18%;
+  border-bottom: 1px solid var(--line2);
+}
+
+.week-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  overflow: hidden;
+  border-radius: 3px 3px 0 0;
+}
+
+.week-segment {
+  min-height: 2px;
+}
+
+.week-label {
+  text-align: center;
+}
+
+.week-heading {
+  margin-top: 16px;
+}
+
+.week-heading:first-child {
+  margin-top: 2px;
+}
+
 .entry-date {
   padding-top: 2px;
   font-size: var(--fs-s);
