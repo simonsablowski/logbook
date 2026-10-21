@@ -355,6 +355,7 @@ select:hover,
   -webkit-line-clamp: 2;
   line-clamp: 2;
   overflow: hidden;
+  min-height: 2.7em; /* always two lines, so that every card has the same height */
   margin: 2px 0 8px;
   line-height: 1.35;
 }
