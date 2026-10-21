@@ -146,6 +146,14 @@ select {
   white-space: nowrap;
 }
 
+/* Status names in the Backlog look like the column names of the Board. */
+.status-name {
+  font-size: var(--fs-s);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .icon {
   width: 14px;
   height: 14px;

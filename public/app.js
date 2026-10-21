@@ -263,8 +263,8 @@ async function moveTicket(id, status) {
 const icon = (name) =>
   `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 
-const fact = (iconName, label, text) =>
-  `<span class="fact" title="${label}">${icon(iconName)}<span class="sr">${label}: </span>${esc(text)}</span>`;
+const fact = (iconName, label, text, extra = '') =>
+  `<span class="fact${extra}" title="${label}">${icon(iconName)}<span class="sr">${label}: </span>${esc(text)}</span>`;
 
 const priorityDot = (priority) => (PRIORITY_LABEL[priority] ? `<span class="dot ${priority}" aria-hidden="true"></span>` : '');
 
@@ -314,7 +314,7 @@ const backlogRow = (ticket) => `
   <button class="row" data-id="${ticket.id}"${tintStyle(ticket)}>
     <span class="id">${ticket.id}</span>
     <span class="row-title">${esc(ticket.title)}</span>
-    <span class="meta">${fact(ticket.status, 'Status', STATUS_LABEL[ticket.status])}${effortFact(ticket)}</span>
+    <span class="meta">${fact(ticket.status, 'Status', STATUS_LABEL[ticket.status], ' status-name')}${effortFact(ticket)}</span>
   </button>`;
 
 const changelogEntry = (ticket) => {
@@ -611,7 +611,7 @@ function renderColumn([status, label], visible) {
   const cards = items.map(card).join('') || (add ? '' : '<div class="note">Empty</div>');
   return `
   <section class="column${limitClass}" data-status="${status}">
-    <h2 class="heading"><span>${label}</span>${count}</h2>
+    <h2 class="heading"><span class="fact">${icon(status)}${label}</span>${count}</h2>
     <div class="cards">${add}${cards}</div>
     <div class="note more" data-view-name="${overflowView}" hidden></div>
   </section>`;
