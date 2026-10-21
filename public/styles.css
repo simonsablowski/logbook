@@ -219,14 +219,15 @@ select {
 /* The tabs look like a language switch: a pill with a thin outline and a filled pill for the active one. */
 .tabs {
   display: flex;
+  height: 34px;
   background: var(--surface);
   border: 1px solid var(--line2);
   border-radius: 999px;
 }
 
-/* The tabs fill the pill up to its border: 34 px high with the border, so 32 px inside. */
+/* The tabs fill the pill up to its border, whatever the width of the border is. */
 .tab {
-  height: 32px;
+  height: 100%;
   padding: 0 18px;
   background: none;
   border: 0;
