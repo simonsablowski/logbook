@@ -1,0 +1,11 @@
+[
+  { "prefix": "CRS", "name": "courses.simsab.net", "repo": "simonsablowski/courses", "url": "https://courses.simsab.net" },
+  { "prefix": "RSR", "name": "resources.simsab.net", "repo": "simonsablowski/resources", "url": "https://resources.simsab.net" },
+  { "prefix": "MTV", "name": "motivado.com", "repo": "simonsablowski/motivado", "url": "https://motivado.com" },
+  { "prefix": "SIM", "name": "simsab.net", "repo": "simonsablowski/simsab", "url": "https://simsab.net" },
+  { "prefix": "IKS", "name": "shop.inkarnatoons.com", "repo": "simonsablowski/shop", "url": "https://shop.inkarnatoons.com" },
+  { "prefix": "DBP", "name": "dbp12.simsab.net", "repo": "simonsablowski/dbp12", "url": "https://dbp12.simsab.net" },
+  { "prefix": "NOR", "name": "norahammer.com", "repo": "simonsablowski/norahammer", "url": "https://norahammer.com" },
+  { "prefix": "NMB", "name": "notmybiz.com", "repo": "simonsablowski/notmybiz", "url": "https://notmybiz.com" },
+  { "prefix": "BEU", "name": "beatemup.simsab.net", "repo": "simonsablowski/beatemup", "url": "https://beatemup.simsab.net" }
+]
