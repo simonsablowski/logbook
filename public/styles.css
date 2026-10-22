@@ -6,7 +6,7 @@
   --fs-l: 18px;
   color-scheme: light dark; /* scrollbars and menus of the browser follow the theme */
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235f5e5a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  --tint-strength: 18%; /* how strongly the colour of a project tints its cards and changelog entries */
+  --tint-strength: 100%; /* how strongly the colour of a project tints its cards and changelog entries */
 
   --bg: #f7f6f2;
   --surface: #fff;
@@ -651,7 +651,21 @@ button.swatch:hover {
   text-align: left;
 }
 
-/* Cards are tinted subtly in the colour of their project. */
+/* Cards, rows and entries of a project with a colour are filled with it, so the text on them is dark in both
+   themes. Their inline style sets --tint; without a colour they keep the surface and the usual text colours. */
+:is(.card, .row, .entry)[style*="--tint"] {
+  --text: #1c1c1a;
+  --text2: #45443f;
+  --line: rgba(28, 28, 26, 0.14);
+  --line2: rgba(28, 28, 26, 0.38);
+  color: var(--text);
+}
+
+:is(.card, .row, .entry)[style*="--tint"] .dot {
+  box-shadow: 0 0 0 1px rgba(28, 28, 26, 0.35);
+}
+
+/* Cards are tinted in the colour of their project. */
 .card {
   --tint: var(--surface);
   background: color-mix(in srgb, var(--tint) var(--tint-strength), var(--surface));
