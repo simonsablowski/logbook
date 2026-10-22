@@ -662,6 +662,10 @@ button.swatch:hover {
   color: var(--text);
 }
 
+:is(.card, .row, .entry)[style*="--tint"] .id {
+  color: var(--text2);
+}
+
 :is(.card, .row, .entry)[style*="--tint"] .dot {
   box-shadow: 0 0 0 1px rgba(28, 28, 26, 0.35);
 }
